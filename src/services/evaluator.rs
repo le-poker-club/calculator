@@ -1,6 +1,7 @@
 use std::collections::{HashMap, HashSet};
 
 use async_trait::async_trait;
+use chrono::Local;
 use holdem_hand_evaluator::Hand;
 
 use crate::models::error_model;
@@ -65,57 +66,67 @@ impl CalculateRating for Evaluator {
         let mut index = 0;
         let mut win_count_by_uid = HashMap::new();
         let mut used_cards: HashSet<i32> = HashSet::new();
-        while index < remain_card {
-            match get_index(
-                &mut alive_card_index,
-                index,
-                alive_cards.len() as i32,
-                &mut used_cards,
-            ) {
-                (true, _, _) => break,
-                (false, true, _) => {
-                    index -= 1; // 跳到上一层
-                    continue;
-                }
-                (false, false, _) => {
-                    if index == remain_card - 1 {
-                        let mut new_board = Hand::new();
-                        // 获取待发的牌
-                        (0..remain_card).for_each(|i| {
-                            new_board =
-                                new_board.add_card(alive_cards[alive_card_index[i] as usize]);
-                        });
-                        log::debug!("alive_card_index:{:?}", alive_card_index);
-                        //
-                        new_board = new_board + board;
-                        let mut max_evaluate: u16 = 0;
-                        let mut max_value_uids = Vec::new();
-                        // 组合全部的牌，进行计算
-                        user_cards.iter().for_each(|user_card| {
-                            let evaluate_hand = user_card.hands + new_board;
-                            let value = evaluate_hand.evaluate();
-                            if value > max_evaluate {
-                                max_value_uids.clear();
-                                max_value_uids.push(user_card.uid);
-                                max_evaluate = value;
-                            } else if value == max_evaluate {
-                                max_value_uids.push(user_card.uid);
-                            }
-                        });
-                        // 根据结果将对应的map值进行更新
-                        for uid in max_value_uids {
-                            if let Some(x) = win_count_by_uid.get(uid) {
-                                win_count_by_uid.insert(uid, x + 1);
-                            } else {
-                                win_count_by_uid.insert(uid, 1u64);
+        // 插入select宏
+        tokio::select! {
+            _ = async{
+                tokio::time::sleep(tokio::time::Duration::from_secs(2)).await;
+            }=>{
+            },
+            _ = async{
+                while index < remain_card {
+                    match get_index(
+                        &mut alive_card_index,
+                        index,
+                        alive_cards.len() as i32,
+                        &mut used_cards,
+                    ) {
+                        (true, _, _) => break,
+                        (false, true, _) => {
+                            index -= 1; // 跳到上一层
+                            tokio::task::yield_now().await;
+                            continue;
+                        }
+                        (false, false, _) => {
+                            if index == remain_card - 1 {
+                                let mut new_board = Hand::new();
+                                // 获取待发的牌
+                                (0..remain_card).for_each(|i| {
+                                    new_board =
+                                        new_board.add_card(alive_cards[alive_card_index[i] as usize]);
+                                });
+                                log::debug!("alive_card_index:{:?}", alive_card_index);
+                                //
+                                new_board = new_board + board;
+                                let mut max_evaluate: u16 = 0;
+                                let mut max_value_uids = Vec::new();
+                                // 组合全部的牌，进行计算
+                                user_cards.iter().for_each(|user_card| {
+                                    let evaluate_hand = user_card.hands + new_board;
+                                    let value = evaluate_hand.evaluate();
+                                    if value > max_evaluate {
+                                        max_value_uids.clear();
+                                        max_value_uids.push(user_card.uid);
+                                        max_evaluate = value;
+                                    } else if value == max_evaluate {
+                                        max_value_uids.push(user_card.uid);
+                                    }
+                                });
+                                // 根据结果将对应的map值进行更新
+                                for uid in max_value_uids {
+                                    if let Some(x) = win_count_by_uid.get(uid) {
+                                        win_count_by_uid.insert(uid, x + 1);
+                                    } else {
+                                        win_count_by_uid.insert(uid, 1u64);
+                                    }
+                                }
+                                // 命中最后一层后，最后一层需要index+1继续
+                                continue;
                             }
                         }
-                        // 命中最后一层后，最后一层需要index+1继续
-                        continue;
                     }
+                    index += 1;
                 }
-            }
-            index += 1;
+            }=>{}
         }
         // 根据win_count_by_uid进行rating的计算
         let total_num: u64 = win_count_by_uid.iter().map(|(_, v)| v).sum();
