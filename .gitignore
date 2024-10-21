@@ -1,0 +1,7 @@
+
+.DS_Store
+.idea/calculator.iml
+.idea/modules.xml
+.idea/vcs.xml
+.idea/.gitignore
+target
