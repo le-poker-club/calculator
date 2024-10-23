@@ -1,4 +1,4 @@
-use actix_web::{get, post, Responder, web};
+use actix_web::{get, post, web, Responder};
 
 use crate::models::model::{CalculateRatingReq, CalculateRatingRsp};
 use crate::services::evaluator::{CalculateRating, Evaluator};
