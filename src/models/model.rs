@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Deserialize, Serialize)]
 pub struct CalculateRatingReq {
     pub clients: Vec<UserCards>,
+    #[serde(default)]
     pub deal_cards: Vec<String>, // 公共牌
 }
 #[derive(Deserialize, Serialize)]
