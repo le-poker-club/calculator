@@ -6,3 +6,4 @@
 .idea/.gitignore
 target
 nohup.out
+/logs

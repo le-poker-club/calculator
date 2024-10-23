@@ -68,12 +68,16 @@ impl CalculateRating for Evaluator {
         let mut used_cards: HashSet<i32> = HashSet::new();
         // 插入select宏
         tokio::select! {
+            // 1s足够了
             _ = async{
-                tokio::time::sleep(tokio::time::Duration::from_secs(2)).await;
+                tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
             }=>{
             },
             _ = async{
-                while index < remain_card {
+                // 限制循环次数
+                let mut loop_time:u32 = 0;
+                while index < remain_card && loop_time < 11000{
+                    loop_time+=1;
                     match get_index(
                         &mut alive_card_index,
                         index,
