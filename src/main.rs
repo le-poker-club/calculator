@@ -54,15 +54,15 @@ async fn mutate_body_type_with_extractors(
     // println!("{:?}",v.to_string());
 
 
-    // let (req, res) = res.into_parts();
-    // let (res2, body) = res.into_parts();
-    // let body2 = body::to_bytes(body).await.ok().unwrap();
-    // let v = body2.to_vec();
-    // let s = String::from_utf8_lossy(v.as_slice());
-    // println!("{:?}",&s);
-    // let res_4 = res2.set_body(v);
-    // let res3 = ServiceResponse::new(req,res);
-    Ok(res)
+    let (req, res) = res.into_parts();
+    let (res2, body) = res.into_parts();
+    let body2 = body::to_bytes(body).await.ok().unwrap();
+    let v = body2.to_vec();
+    let s = String::from_utf8_lossy(v.as_slice());
+    println!("{:?}",&s);
+    let res_4 = res2.set_body(v);
+    let res3 = ServiceResponse::new(req,res_4);
+    Ok(res3)
     // return Ok(ServiceResponse::new(req,));
 }
 
