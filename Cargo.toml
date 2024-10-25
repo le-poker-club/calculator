@@ -14,7 +14,8 @@ serde = { version = "1.0.210", features = ["derive"] }
 holdem-hand-evaluator = { git = "https://github.com/b-inary/holdem-hand-evaluator" }
 async-trait = "0.1"  # 请根据需要选择最新版本
 chrono = "0.4"
-
+serde_json = "1.0.128"
+actix-http = "3.9.0"
 [profile.release]
 codegen-units = 1
 lto = "fat"

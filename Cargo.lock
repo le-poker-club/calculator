@@ -369,6 +369,7 @@ dependencies = [
 name = "calculate"
 version = "0.1.0"
 dependencies = [
+ "actix-http",
  "actix-web",
  "anyhow",
  "async-trait",
@@ -377,6 +378,7 @@ dependencies = [
  "holdem-hand-evaluator",
  "log",
  "serde",
+ "serde_json",
  "tokio",
  "uuid",
 ]
