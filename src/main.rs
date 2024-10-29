@@ -4,22 +4,26 @@ use std::io::Read;
 use std::panic;
 use std::time::Duration;
 
-use actix_web::{web, App, HttpServer, Error, HttpMessage, dev};
+use crate::models::model::THREAD_LOCAL_DATA;
+use actix_http;
+use actix_http::body;
 use actix_web::body::MessageBody;
 use actix_web::dev::{ServiceRequest, ServiceResponse};
 use actix_web::middleware::{from_fn, Logger, Next};
 use actix_web::web::{BytesMut, Payload, Query};
+use actix_web::{dev, web, App, Error, HttpMessage, HttpServer};
 use anyhow::anyhow;
 use flexi_logger::{Age, Cleanup, Criterion, Duplicate, FileSpec, Naming, WriteMode};
 use holdem_hand_evaluator::{heads_up_win_frequency, Hand};
 use log::info;
 use serde_json::Value;
-use actix_http;
-use actix_http::body;
+use uuid::Uuid;
+use crate::utils::log::{ log_info_debug, log_info_display};
 
 mod handlers;
 mod models;
 mod services;
+mod utils;
 
 fn panic_hook() {
     panic::set_hook(Box::new(|e| {
@@ -42,14 +46,16 @@ async fn mutate_body_type_with_extractors(
     mut req: ServiceRequest,
     next: Next<impl MessageBody + 'static>,
 ) -> Result<ServiceResponse<impl MessageBody>, Error> {
-    println!("body is: {string_body}");
-    println!("query string: {query:?}");
+    let my_uuid = Uuid::new_v4();
+    THREAD_LOCAL_DATA.set(my_uuid);
+    log_info_display("req body is",&string_body);
+    log_info_debug("req query string",&query);
     req.set_payload(bytes_to_payload(web::Bytes::from(string_body)));
     let res = next.call(req).await?;
     let (req, res) = res.into_parts();
     let (empty_rsp, rsp_body) = res.into_parts();
     let rsp_body_bytes = body::to_bytes(rsp_body).await.ok().unwrap();
-    println!("{:?}", rsp_body_bytes);
+    log_info_display("rsp body is",&String::from_utf8(rsp_body_bytes.to_vec()).unwrap());
     let new_rsp = empty_rsp.set_body(rsp_body_bytes);
     let service_rsp = ServiceResponse::new(req, new_rsp);
     Ok(service_rsp)

@@ -1,5 +1,12 @@
 use holdem_hand_evaluator::Hand;
 use serde::{Deserialize, Serialize};
+use std::cell::RefCell;
+use uuid::Uuid;
+
+// 定义一个线程本地变量，每个线程会有自己独立的 RefCell
+thread_local! {
+    pub static THREAD_LOCAL_DATA: RefCell<Uuid> = RefCell::new(Uuid::new_v4());
+}
 
 #[derive(Deserialize, Serialize)]
 pub struct CalculateRatingReq {
