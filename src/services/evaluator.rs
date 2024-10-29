@@ -3,6 +3,7 @@ use std::collections::{HashMap, HashSet};
 use async_trait::async_trait;
 use chrono::Local;
 use holdem_hand_evaluator::Hand;
+use itertools::Itertools;
 
 use crate::models::error_model;
 use crate::models::model::{CalculateRatingReq, CalculateRatingRsp, CardsInfo, ClientRate};
@@ -20,10 +21,41 @@ pub trait CalculateRating {
 
 pub struct Evaluator {}
 
+fn calculate_rating_valid(req: &CalculateRatingReq)->bool{
+    let length = req.deal_cards.len() + req.clients.len() * 2;
+    let demo = String::from("");
+    let mut vec:Vec<&String> = vec![&demo;length];
+    let mut i = 0;
+    req.clients.iter().for_each(|x1| {
+        vec[i] =  &x1.hands[0];
+        vec[i+1] = &x1.hands[1];
+        i += 2;
+    });
+    req.deal_cards.iter().for_each(|x2| {
+        vec [i] = &x2;
+        i += 1;
+    });
+    if vec.iter().duplicates().count() > 0{
+       return false;
+    }
+    let empty = "".to_string();
+    if vec.into_iter().contains(&empty) {
+        return false;
+    }
+    return true;
+}
+
 #[async_trait]
 // 对deal_cards为空的情况进行测试
 impl CalculateRating for Evaluator {
-    async fn calculate_rating(&self, req: CalculateRatingReq) -> CalculateRatingRsp {
+    async fn calculate_rating(&self,req: CalculateRatingReq) -> CalculateRatingRsp {
+        if !calculate_rating_valid(&req){
+            return CalculateRatingRsp {
+                code: error_model::ERROR_INVALID,
+                clients_rate: vec![],
+                msg: "req has duplicates or has empty string input".to_string(),
+            };
+        }
         let user_cards = convert(&req);
         if user_cards.len() < 2 {
             return CalculateRatingRsp {
@@ -32,6 +64,7 @@ impl CalculateRating for Evaluator {
                 msg: "clients length invalid".to_string(),
             };
         }
+
         let board = if let Some(board) = req
             .deal_cards
             .iter()
