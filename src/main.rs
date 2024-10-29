@@ -46,44 +46,14 @@ async fn mutate_body_type_with_extractors(
     println!("query string: {query:?}");
     req.set_payload(bytes_to_payload(web::Bytes::from(string_body)));
     let res = next.call(req).await?;
-    // let a = res.into_parts();
-    // let (res, body) = res.into_parts();
-    // let body = res.map_into_right_body();
-    // let logvalue = body.cloned();
-    // let v = logvalue.bytes();
-    // println!("{:?}",v.to_string());
-
-
     let (req, res) = res.into_parts();
-    let (res2, body) = res.into_parts();
-    let body2 = body::to_bytes(body).await.ok().unwrap();
-    let v = body2.to_vec();
-    let s = String::from_utf8_lossy(v.as_slice());
-    println!("{:?}",&s);
-    let res_4 = res2.set_body(v);
-    let res3 = ServiceResponse::new(req,res_4);
-    Ok(res3)
-    // return Ok(ServiceResponse::new(req,));
+    let (empty_rsp, rsp_body) = res.into_parts();
+    let rsp_body_bytes = body::to_bytes(rsp_body).await.ok().unwrap();
+    println!("{:?}", rsp_body_bytes);
+    let new_rsp = empty_rsp.set_body(rsp_body_bytes);
+    let service_rsp = ServiceResponse::new(req, new_rsp);
+    Ok(service_rsp)
 }
-
-// async fn my_middleware(
-//     mut req: ServiceRequest,
-//     next: Next<impl MessageBody>,
-// ) -> Result<ServiceResponse<impl MessageBody>, Error> {
-//     // pre-processing
-//     let mut body = BytesMut::new();  // 创建一个缓冲区用于收集数据流
-//     let mut payload = req.take_payload();
-//     let r : actix_http::h1::Payload = payload.into();
-//     let _ = r.poll_next(req.ctx);
-//     // 读取请求体内容并保存
-//     let body_str = String::from_utf8(body.to_vec()).unwrap_or_default();
-//     println!("Request JSON body: {}", body_str);
-//     let (_,mut payload1) = actix_http::h1::Payload::create(true);
-//     payload1.unread_data(body.freeze());
-//     req.set_payload(payload1.into());
-//     next.call(req).await
-//     // post-processing
-// }
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
