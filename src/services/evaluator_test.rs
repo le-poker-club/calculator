@@ -10,14 +10,14 @@ mod tests {
             deal_cards: vec![],
         };
         req.clients.push(UserCards {
-            hands: ["Ah".to_string(), "Kh".to_string()],
+            hands: ["As".to_string(), "Ks".to_string()],
             uid: "1".to_string(),
         });
         req.clients.push(UserCards {
-            hands: ["Jd".to_string(), "Kd".to_string()],
+            hands: ["2s".to_string(), "Ts".to_string()],
             uid: "2".to_string(),
         });
-        req.deal_cards.push("Ac".to_string());
+        // req.deal_cards.push("Ac".to_string());
         // req.deal_cards.push("Js".to_string());
         // req.deal_cards.push("Ks".to_string());
         // req.deal_cards.push("Kc".to_string());

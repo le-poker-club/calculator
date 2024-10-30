@@ -86,6 +86,7 @@ async fn main() -> std::io::Result<()> {
     HttpServer::new(|| {
         App::new()
             .wrap(from_fn(mutate_body_type_with_extractors))
+            // .wrap(from_fn(timeout_10secs))
             .service(handlers::controller::submit)
             .service(handlers::controller::hello)
     })
@@ -93,4 +94,14 @@ async fn main() -> std::io::Result<()> {
     .bind(("127.0.0.1", 8090))?
     .run()
     .await
+}
+
+async fn timeout_10secs(
+    req: ServiceRequest,
+    next: Next<impl MessageBody + 'static>,
+) -> Result<ServiceResponse<impl MessageBody>, Error> {
+    match tokio::time::timeout(Duration::from_secs(2), next.call(req)).await {
+        Ok(res) => res,
+        Err(_err) => Err(actix_web::error::ErrorRequestTimeout("")),
+    }
 }
