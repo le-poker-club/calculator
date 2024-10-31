@@ -105,6 +105,7 @@ impl CalculateRating for Evaluator {
         let mut draw_count: u64 = 0;
         // 已经出过的公共牌
         let mut used_cards: HashSet<usize> = HashSet::new();
+        let max_loop:u32 = 1000000;
         // 插入select宏
         tokio::select! {
             // 1s足够了
@@ -116,16 +117,21 @@ impl CalculateRating for Evaluator {
                 // 限制循环次数
                 let mut loop_time:u32 = 0;
                 let mut can_remove_first = false;
-                while index < remain_card /*&& loop_time < 500000*/{
+                while (index < remain_card ||remain_card == 0)  && loop_time < max_loop{
                     loop_time+=1;
-                    match get_index(
+                    let mut index_get=(false,false);
+                    if remain_card != 0{
+                        index_get =  get_index(
                         &mut alive_card_index,
                         index,
                         alive_cards_demo.len() as i32,
                         &mut used_cards,
                         &can_remove_first,
                         &alive_cards,
-                    ) {
+                    );
+                    }
+
+                    match index_get{
                         (true, _) => break,
                         (false, true) => {
                             index -= 1; // 跳到上一层
@@ -133,7 +139,7 @@ impl CalculateRating for Evaluator {
                             continue;
                         }
                         (false, false) => {
-                            if index == remain_card - 1 {
+                            if  remain_card == 0 || index == remain_card - 1 {
                                 can_remove_first = true;
                                 let mut new_board = Hand::new();
                                 // let mut debg = vec![];
@@ -171,6 +177,9 @@ impl CalculateRating for Evaluator {
                                     }
                                 }
                                 }
+                                if remain_card == 0{
+                                    loop_time = max_loop+1;
+                                }
                                 // 命中最后一层后，最后一层需要index+1继续
                                 continue;
                             }
@@ -182,7 +191,7 @@ impl CalculateRating for Evaluator {
         }
         // 根据win_count_by_uid进行rating的计算
         let mut total_num: u64 = win_count_by_uid.iter().map(|(_, v)| v).sum();
-        total_num += user_cards.len() as u64 * draw_count;
+        total_num += draw_count;
         let mut calculate_rating_rsp = CalculateRatingRsp {
             code: 0,
             clients_rate: vec![],
