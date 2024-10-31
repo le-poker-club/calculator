@@ -22,7 +22,7 @@ pub trait CalculateRating {
 
 pub struct Evaluator {}
 
-fn calculate_rating_valid(req: &CalculateRatingReq)->bool{
+fn calculate_rating_valid(req: &CalculateRatingReq)->(bool,Vec<CardsInfo>){
     let length = req.deal_cards.len() + req.clients.len() * 2;
     let demo = String::from("");
     let mut vec:Vec<&String> = vec![&demo;length];
@@ -37,35 +37,31 @@ fn calculate_rating_valid(req: &CalculateRatingReq)->bool{
         i += 1;
     });
     if vec.iter().duplicates().count() > 0{
-       return false;
+       return (false,vec![]);
     }
     let empty = "".to_string();
     if vec.into_iter().contains(&empty) {
-        return false;
+        return (false,vec![]);
     }
-    return true;
+    let user_cards = convert(&req);
+    if user_cards.len() < 2 {
+        return (false,vec![]);
+    }
+    return (true,user_cards);
 }
 
 #[async_trait]
 // 对deal_cards为空的情况进行测试
 impl CalculateRating for Evaluator {
     async fn calculate_rating(&self,req: CalculateRatingReq) -> CalculateRatingRsp {
-        if !calculate_rating_valid(&req){
+        let ( valid,user_cards) = calculate_rating_valid(&req);
+        if !valid{
             return CalculateRatingRsp {
                 code: error_model::ERROR_INVALID,
                 clients_rate: vec![],
-                msg: "req has duplicates or has empty string input".to_string(),
+                msg: "req has duplicates or has empty string input,or client.len is lt 2".to_string(),
             };
         }
-        let user_cards = convert(&req);
-        if user_cards.len() < 2 {
-            return CalculateRatingRsp {
-                code: error_model::ERROR_INVALID,
-                clients_rate: vec![],
-                msg: "clients length invalid".to_string(),
-            };
-        }
-
         let board = if let Some(board) = req
             .deal_cards
             .iter()
