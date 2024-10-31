@@ -7,7 +7,7 @@ use itertools::Itertools;
 
 use crate::models::error_model;
 use crate::models::model::{CalculateRatingReq, CalculateRatingRsp, CardsInfo, ClientRate};
-use crate::utils::log::{log_info_debug, log_info_display};
+use crate::utils::log::{log_debug_debug, log_info_debug, log_info_display};
 
 // 可参见heads_up_win_frequency方法的compute_alive_cards方法。该方法可以直接找出可用的card
 pub async fn evaluate(input: &String) -> u16 {
@@ -105,14 +105,14 @@ impl CalculateRating for Evaluator {
         tokio::select! {
             // 1s足够了
             _ = async{
-                tokio::time::sleep(tokio::time::Duration::from_secs(10)).await;
+                tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
             }=>{
             },
             _ = async{
                 // 限制循环次数
                 let mut loop_time:u32 = 0;
                 let mut can_remove_first = false;
-                while index < remain_card /*&& loop_time < 11000*/{
+                while index < remain_card && loop_time < 11000{
                     loop_time+=1;
                     match get_index(
                         &mut alive_card_index,
@@ -136,7 +136,7 @@ impl CalculateRating for Evaluator {
                                     new_board =
                                         new_board.add_card(alive_cards[alive_card_index[i] as usize]);
                                 });
-                                log_info_debug("alive_card_index", &alive_card_index);
+                                log_debug_debug("alive_card_index", &alive_card_index);
                                 new_board = new_board + board;
                                 let mut max_evaluate: u16 = 0;
                                 let mut max_value_uids = Vec::new();
@@ -175,14 +175,14 @@ impl CalculateRating for Evaluator {
         }
         // 根据win_count_by_uid进行rating的计算
         let mut total_num: u64 = win_count_by_uid.iter().map(|(_, v)| v).sum();
-        total_num += 2 * draw_count;
+        total_num += user_cards.len() as u64 * draw_count;
         let mut calculate_rating_rsp = CalculateRatingRsp {
             code: 0,
             clients_rate: vec![],
             msg: "".to_string(),
         };
-        log_info_debug("draw",&draw_count);
-        log_info_debug("win",&win_count_by_uid);
+        log_debug_debug("draw",&draw_count);
+        log_debug_debug("win",&win_count_by_uid);
         for client in &req.clients {
             let uid = &client.uid;
             let uid_copy = uid.clone();

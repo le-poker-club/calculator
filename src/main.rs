@@ -86,7 +86,7 @@ async fn main() -> std::io::Result<()> {
     HttpServer::new(|| {
         App::new()
             .wrap(from_fn(mutate_body_type_with_extractors))
-            // .wrap(from_fn(timeout_10secs))
+            .wrap(from_fn(timeout_10secs))
             .service(handlers::controller::submit)
             .service(handlers::controller::hello)
     })
