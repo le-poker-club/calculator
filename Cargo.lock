@@ -378,6 +378,7 @@ dependencies = [
  "holdem-hand-evaluator",
  "itertools",
  "log",
+ "rand",
  "serde",
  "serde_json",
  "tokio",

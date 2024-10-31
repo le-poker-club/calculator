@@ -5,6 +5,7 @@ use std::panic;
 use std::time::Duration;
 
 use crate::models::model::THREAD_LOCAL_DATA;
+use crate::utils::log::{log_info_debug, log_info_display};
 use actix_http;
 use actix_http::body;
 use actix_web::body::MessageBody;
@@ -18,7 +19,6 @@ use holdem_hand_evaluator::{heads_up_win_frequency, Hand};
 use log::info;
 use serde_json::Value;
 use uuid::Uuid;
-use crate::utils::log::{ log_info_debug, log_info_display};
 
 mod handlers;
 mod models;
@@ -48,14 +48,17 @@ async fn mutate_body_type_with_extractors(
 ) -> Result<ServiceResponse<impl MessageBody>, Error> {
     let my_uuid = Uuid::new_v4();
     THREAD_LOCAL_DATA.set(my_uuid);
-    log_info_display("req body is",&string_body);
-    log_info_debug("req query string",&query);
+    log_info_display("req body is", &string_body);
+    log_info_debug("req query string", &query);
     req.set_payload(bytes_to_payload(web::Bytes::from(string_body)));
     let res = next.call(req).await?;
     let (req, res) = res.into_parts();
     let (empty_rsp, rsp_body) = res.into_parts();
     let rsp_body_bytes = body::to_bytes(rsp_body).await.ok().unwrap();
-    log_info_display("rsp body is",&String::from_utf8(rsp_body_bytes.to_vec()).unwrap());
+    log_info_display(
+        "rsp body is",
+        &String::from_utf8(rsp_body_bytes.to_vec()).unwrap(),
+    );
     let new_rsp = empty_rsp.set_body(rsp_body_bytes);
     let service_rsp = ServiceResponse::new(req, new_rsp);
     Ok(service_rsp)

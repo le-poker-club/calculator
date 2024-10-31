@@ -4,6 +4,8 @@ use async_trait::async_trait;
 use chrono::Local;
 use holdem_hand_evaluator::Hand;
 use itertools::Itertools;
+use rand::seq::SliceRandom;
+use rand::thread_rng;
 
 use crate::models::error_model;
 use crate::models::model::{CalculateRatingReq, CalculateRatingRsp, CardsInfo, ClientRate};
@@ -22,44 +24,45 @@ pub trait CalculateRating {
 
 pub struct Evaluator {}
 
-fn calculate_rating_valid(req: &CalculateRatingReq)->(bool,Vec<CardsInfo>){
+fn calculate_rating_valid(req: &CalculateRatingReq) -> (bool, Vec<CardsInfo>) {
     let length = req.deal_cards.len() + req.clients.len() * 2;
     let demo = String::from("");
-    let mut vec:Vec<&String> = vec![&demo;length];
+    let mut vec: Vec<&String> = vec![&demo; length];
     let mut i = 0;
     req.clients.iter().for_each(|x1| {
-        vec[i] =  &x1.hands[0];
-        vec[i+1] = &x1.hands[1];
+        vec[i] = &x1.hands[0];
+        vec[i + 1] = &x1.hands[1];
         i += 2;
     });
     req.deal_cards.iter().for_each(|x2| {
-        vec [i] = &x2;
+        vec[i] = &x2;
         i += 1;
     });
-    if vec.iter().duplicates().count() > 0{
-       return (false,vec![]);
+    if vec.iter().duplicates().count() > 0 {
+        return (false, vec![]);
     }
     let empty = "".to_string();
     if vec.into_iter().contains(&empty) {
-        return (false,vec![]);
+        return (false, vec![]);
     }
     let user_cards = convert(&req);
     if user_cards.len() < 2 {
-        return (false,vec![]);
+        return (false, vec![]);
     }
-    return (true,user_cards);
+    return (true, user_cards);
 }
 
 #[async_trait]
 // 对deal_cards为空的情况进行测试
 impl CalculateRating for Evaluator {
-    async fn calculate_rating(&self,req: CalculateRatingReq) -> CalculateRatingRsp {
-        let ( valid,user_cards) = calculate_rating_valid(&req);
-        if !valid{
+    async fn calculate_rating(&self, req: CalculateRatingReq) -> CalculateRatingRsp {
+        let (valid, user_cards) = calculate_rating_valid(&req);
+        if !valid {
             return CalculateRatingRsp {
                 code: error_model::ERROR_INVALID,
                 clients_rate: vec![],
-                msg: "req has duplicates or has empty string input,or client.len is lt 2".to_string(),
+                msg: "req has duplicates or has empty string input,or client.len is lt 2"
+                    .to_string(),
             };
         }
         let board = if let Some(board) = req
@@ -86,17 +89,22 @@ impl CalculateRating for Evaluator {
         };
         mask = mask | board.get_mask();
         // // 计算剩余的cards
-        let alive_cards = compute_alive_cards(mask);
+        let mut alive_cards = vec![];
+        let mut alive_cards_demo = compute_alive_cards(mask);
         let remain_card = 5 - board.len();
-        let mut alive_card_index: Vec<i32> = Vec::new();
-        (0..remain_card).for_each(|i| {
-            alive_card_index.push(i as i32 - 1);
-        });
-        // 根据cards进行胜率计算
+        for i in 1..=remain_card {
+            let mut alive_cards_temp = alive_cards_demo.clone();
+            let mut rng = thread_rng();
+            alive_cards_temp.shuffle(&mut rng);
+            alive_cards.push(alive_cards_temp);
+        }
+        let mut alive_card_index: Vec<i32> = vec![-1; remain_card]; // [0,1,2,3,4]
+                                                                    // 根据cards进行胜率计算
         let mut index = 0;
         let mut win_count_by_uid = HashMap::new();
-        let mut draw_count:u64 = 0;
-        let mut used_cards: HashSet<i32> = HashSet::new();
+        let mut draw_count: u64 = 0;
+        // 已经出过的公共牌
+        let mut used_cards: HashSet<usize> = HashSet::new();
         // 插入select宏
         tokio::select! {
             // 1s足够了
@@ -108,31 +116,34 @@ impl CalculateRating for Evaluator {
                 // 限制循环次数
                 let mut loop_time:u32 = 0;
                 let mut can_remove_first = false;
-                while index < remain_card && loop_time < 11000{
+                while index < remain_card /*&& loop_time < 500000*/{
                     loop_time+=1;
                     match get_index(
                         &mut alive_card_index,
                         index,
-                        alive_cards.len() as i32,
+                        alive_cards_demo.len() as i32,
                         &mut used_cards,
                         &can_remove_first,
+                        &alive_cards,
                     ) {
-                        (true, _, _) => break,
-                        (false, true, _) => {
+                        (true, _) => break,
+                        (false, true) => {
                             index -= 1; // 跳到上一层
                             tokio::task::yield_now().await;
                             continue;
                         }
-                        (false, false, _) => {
+                        (false, false) => {
                             if index == remain_card - 1 {
                                 can_remove_first = true;
                                 let mut new_board = Hand::new();
+                                // let mut debg = vec![];
                                 // 获取待发的牌
                                 (0..remain_card).for_each(|i| {
                                     new_board =
-                                        new_board.add_card(alive_cards[alive_card_index[i] as usize]);
+                                        new_board.add_card(alive_cards[i][alive_card_index[i] as usize]);
+                                    // debg.push(alive_cards[i][alive_card_index[i] as usize]);
                                 });
-                                log_debug_debug("alive_card_index", &alive_card_index);
+                                // log_debug_debug("alive_card_index", &debg);
                                 new_board = new_board + board;
                                 let mut max_evaluate: u16 = 0;
                                 let mut max_value_uids = Vec::new();
@@ -177,15 +188,15 @@ impl CalculateRating for Evaluator {
             clients_rate: vec![],
             msg: "".to_string(),
         };
-        log_debug_debug("draw",&draw_count);
-        log_debug_debug("win",&win_count_by_uid);
+        log_info_debug("draw", &draw_count);
+        log_info_debug("win", &win_count_by_uid);
         for client in &req.clients {
             let uid = &client.uid;
             let uid_copy = uid.clone();
             if let Some(v) = win_count_by_uid.get(&uid) {
                 calculate_rating_rsp.clients_rate.push(ClientRate {
                     uid: uid_copy,
-                    rate: (v+draw_count) * 1000 / total_num,
+                    rate: (v + draw_count) * 1000 / total_num,
                 })
             } else {
                 calculate_rating_rsp.clients_rate.push(ClientRate {
@@ -202,19 +213,26 @@ fn get_index(
     alive_card_index: &mut Vec<i32>,
     current_index: usize,
     alive_cards_len: i32,
-    used_cards: &mut HashSet<i32>,
-    can_remove:&bool,
-) -> (bool, bool, i32) {
+    used_cards: &mut HashSet<usize>,
+    can_remove: &bool,
+    alive_cards: &Vec<Vec<usize>>,
+) -> (bool, bool) {
     // 第一次的时候不能remove
-    if *can_remove{
-        used_cards.remove(&alive_card_index[current_index]);
+    if *can_remove && alive_card_index[current_index] >= 0 {
+        used_cards.remove(&alive_cards[current_index][alive_card_index[current_index] as usize]);
     }
 
     alive_card_index[current_index] += 1;
-    while let Some(_) = used_cards.get(&alive_card_index[current_index]) {
-        alive_card_index[current_index] += 1;
+    // 在alive_card_index内已经存在对应的牌了
+    while alive_card_index[current_index] < alive_cards_len {
+        if let Some(_) =
+            used_cards.get(&alive_cards[current_index][alive_card_index[current_index] as usize])
+        {
+            alive_card_index[current_index] += 1;
+            continue;
+        }
+        break;
     }
-    used_cards.insert(alive_card_index[current_index]);
     let mut finish = false;
     let mut return_to_previous = false;
     if alive_card_index[current_index] >= alive_cards_len {
@@ -227,8 +245,10 @@ fn get_index(
             // 此轮结束，从上层继续
             return_to_previous = true;
         }
+    } else {
+        used_cards.insert(alive_cards[current_index][alive_card_index[current_index] as usize]);
     }
-    (finish, return_to_previous, alive_card_index[current_index])
+    (finish, return_to_previous)
 }
 
 fn convert(req: &CalculateRatingReq) -> Vec<CardsInfo> {
