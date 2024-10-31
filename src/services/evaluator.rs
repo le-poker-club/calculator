@@ -75,6 +75,7 @@ impl CalculateRating for Evaluator {
         } else {
             Hand::new()
         };
+
         // 获取全部的hands和board的mark
         let mut mask = if let Some(mask) =
             user_cards
@@ -105,7 +106,7 @@ impl CalculateRating for Evaluator {
         let mut draw_count: u64 = 0;
         // 已经出过的公共牌
         let mut used_cards: HashSet<usize> = HashSet::new();
-        let max_loop:u32 = 1000000;
+        let max_loop: u32 = 1000000;
         // 插入select宏
         tokio::select! {
             // 1s足够了

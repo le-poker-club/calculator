@@ -89,7 +89,7 @@ async fn main() -> std::io::Result<()> {
     HttpServer::new(|| {
         App::new()
             .wrap(from_fn(mutate_body_type_with_extractors))
-            .wrap(from_fn(timeout_10secs))
+            .wrap(from_fn(timeout_2secs))
             .service(handlers::controller::submit)
             .service(handlers::controller::hello)
     })
@@ -99,7 +99,7 @@ async fn main() -> std::io::Result<()> {
     .await
 }
 
-async fn timeout_10secs(
+async fn timeout_2secs(
     req: ServiceRequest,
     next: Next<impl MessageBody + 'static>,
 ) -> Result<ServiceResponse<impl MessageBody>, Error> {
