@@ -106,7 +106,7 @@ impl CalculateRating for Evaluator {
         let mut draw_count: u64 = 0;
         // 已经出过的公共牌
         let mut used_cards: HashSet<usize> = HashSet::new();
-        let max_loop: u32 = 1000000;
+        let max_loop: u32 = 10000000;
         // 插入select宏
         tokio::select! {
             // 1s足够了
@@ -211,7 +211,7 @@ impl CalculateRating for Evaluator {
             } else {
                 calculate_rating_rsp.clients_rate.push(ClientRate {
                     uid: uid_copy,
-                    rate: 0,
+                    rate: (draw_count) * 1000 / total_num,
                 })
             }
         }

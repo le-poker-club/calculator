@@ -5,7 +5,7 @@ use std::panic;
 use std::time::Duration;
 
 use crate::models::model::THREAD_LOCAL_DATA;
-use crate::utils::log::{log_info_debug, log_info_display};
+use crate::utils::log::{log_error_debug, log_error_display, log_info_debug, log_info_display};
 use actix_http;
 use actix_http::body;
 use actix_web::body::MessageBody;
@@ -27,7 +27,7 @@ mod utils;
 
 fn panic_hook() {
     panic::set_hook(Box::new(|e| {
-        log::error!("{:?}", anyhow!("panic found:{:?}", e));
+        log_error_debug("", &anyhow!("panic found:{:?}", e));
     }));
 }
 fn test() {
