@@ -15,9 +15,6 @@ use actix_web::web::{BytesMut, Payload, Query};
 use actix_web::{dev, web, App, Error, HttpMessage, HttpServer};
 use anyhow::anyhow;
 use flexi_logger::{Age, Cleanup, Criterion, Duplicate, FileSpec, Naming, WriteMode};
-use holdem_hand_evaluator::{heads_up_win_frequency, Hand};
-use log::info;
-use serde_json::Value;
 use uuid::Uuid;
 
 mod handlers;
