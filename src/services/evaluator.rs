@@ -2,27 +2,21 @@ use std::collections::{HashMap, HashSet};
 use std::string::ToString;
 
 use async_trait::async_trait;
-use chrono::Local;
 use holdem_hand_evaluator::Hand;
 use itertools::Itertools;
-use rand::rngs::StdRng;
-use rand::seq::SliceRandom;
-use rand::{thread_rng, Rng, SeedableRng};
+use rand::{thread_rng, Rng};
 
 use crate::models::error_model;
-use crate::models::model::{CalculateOutsReq, CalculateOutsRsp, CalculateRatingReq, CalculateRatingRsp, CardsInfo, ClientRate, Outs};
-use crate::utils::log::{log_debug_debug, log_info_debug, log_info_display};
+use crate::models::model::{
+    CalculateOutsReq, CalculateOutsRsp, CalculateRatingReq, CalculateRatingRsp, CardsInfo,
+    ClientRate, Outs,
+};
+use crate::utils::log::log_info_debug;
 
-// 可参见heads_up_win_frequency方法的compute_alive_cards方法。该方法可以直接找出可用的card
-pub async fn evaluate(input: &String) -> u16 {
-    let hand = input.parse::<Hand>().unwrap();
-    let rank = hand.evaluate();
-    return rank;
-}
 #[async_trait]
 pub trait CalculateRating {
     async fn calculate_rating(&self, req: CalculateRatingReq) -> CalculateRatingRsp;
-    async fn calculate_outs(&self,req:CalculateOutsReq) -> CalculateOutsRsp;
+    async fn calculate_outs(&self, req: CalculateOutsReq) -> CalculateOutsRsp;
 }
 
 pub struct Evaluator {}
@@ -55,8 +49,12 @@ pub fn calculate_rating_valid(req: &CalculateRatingReq) -> (bool, Vec<CardsInfo>
     return (true, user_cards);
 }
 
-impl Evaluator{
-    fn get_board_and_alive_cards(&self,deal_cards: &Vec<String>,user_cards:&Vec<CardsInfo>) -> (Hand,Vec<usize>){
+impl Evaluator {
+    fn get_board_and_alive_cards(
+        &self,
+        deal_cards: &Vec<String>,
+        user_cards: &Vec<CardsInfo>,
+    ) -> (Hand, Vec<usize>) {
         let board = if let Some(board) = deal_cards
             .iter()
             .map(|x| x.parse::<Hand>().unwrap())
@@ -81,7 +79,7 @@ impl Evaluator{
         mask = mask | board.get_mask();
         // // 计算剩余的cards
         let alive_cards = compute_alive_cards(mask);
-        (board,alive_cards)
+        (board, alive_cards)
     }
 }
 
@@ -91,7 +89,7 @@ impl CalculateRating for Evaluator {
     async fn calculate_outs(&self, req: CalculateOutsReq) -> CalculateOutsRsp {
         let temp = req.into_rating_req();
         let (valid, user_cards) = calculate_rating_valid(&temp);
-        if  !valid || req.deal_cards.len() < 3 {
+        if !valid || req.deal_cards.len() < 3 {
             return CalculateOutsRsp {
                 code: error_model::ERROR_INVALID,
                 outs: vec![],
@@ -99,14 +97,13 @@ impl CalculateRating for Evaluator {
                     .to_string(),
             };
         }
-        let (board,alive_cards) = self.get_board_and_alive_cards(&req
-            .deal_cards,&user_cards);
+        let (board, alive_cards) = self.get_board_and_alive_cards(&req.deal_cards, &user_cards);
         let mut i = 0;
         let mut outs_by_uid = HashMap::new();
-        for card_info in &user_cards{
+        for card_info in &user_cards {
             outs_by_uid.insert(card_info.uid, vec![]);
         }
-        while i < alive_cards.len(){
+        while i < alive_cards.len() {
             let mut new_board = Hand::new();
             new_board = new_board.add_card(alive_cards[i]);
             new_board = new_board + board;
@@ -123,25 +120,28 @@ impl CalculateRating for Evaluator {
                     max_value_uids.push(user_card.uid);
                 }
             });
-            for uid in max_value_uids{
+            for uid in max_value_uids {
                 outs_by_uid.get_mut(uid).unwrap().push(alive_cards[i]);
             }
-            i+=1;
+            i += 1;
         }
         let mut return_outs = vec![];
-        for (uid,outs) in outs_by_uid.into_iter(){
+        for (uid, outs) in outs_by_uid.into_iter() {
             let mut outs_string = vec![];
-            for card in outs{
-                outs_string.push(CARDSSTRING[card].clone().to_string());
+            for card in outs {
+                outs_string.push(CARDSSTRING[card].to_string());
             }
-            let out = Outs{ cards:outs_string, uid: uid.to_string() };
+            let out = Outs {
+                cards: outs_string,
+                uid: uid.to_string(),
+            };
             return_outs.push(out);
         }
         return CalculateOutsRsp {
             code: 0,
             outs: return_outs,
             msg: "".to_string(),
-        }
+        };
     }
     async fn calculate_rating(&self, req: CalculateRatingReq) -> CalculateRatingRsp {
         let (valid, user_cards) = calculate_rating_valid(&req);
@@ -153,8 +153,7 @@ impl CalculateRating for Evaluator {
                     .to_string(),
             };
         }
-        let (board,alive_cards) = self.get_board_and_alive_cards(&req
-            .deal_cards,&user_cards);
+        let (board, alive_cards) = self.get_board_and_alive_cards(&req.deal_cards, &user_cards);
         let remain_card = 5 - board.len();
         let mut alive_card_index: Vec<i32> = Vec::new();
         (0..remain_card).for_each(|i| {
@@ -277,10 +276,7 @@ impl CalculateRating for Evaluator {
         }
         return calculate_rating_rsp;
     }
-
 }
-
-
 
 fn add_to_win_count(
     user_cards: &Vec<CardsInfo>,
@@ -383,61 +379,12 @@ fn compute_alive_cards(mask: u64) -> Vec<usize> {
     result
 }
 
-pub const CARDSSTRING:[&str;NUMBER_OF_CARDS] =
-    [
-        "2c",
-        "2d",
-        "2h",
-        "2s",
-        "3c",
-        "3d",
-        "3h",
-        "3s",
-        "4c",
-        "4d",
-        "4h",
-        "4s",
-        "5c",
-        "5d",
-        "5h",
-        "5s",
-        "6c",
-        "6d",
-        "6h",
-        "6s",
-        "7c",
-        "7d",
-        "7h",
-        "7s",
-        "8c",
-        "8d",
-        "8h",
-        "8s",
-        "9c",
-        "9d",
-        "9h",
-        "9s",
-        "Tc",
-        "Td",
-        "Th",
-        "Ts",
-        "Jc",
-        "Jd",
-        "Jh",
-        "Js",
-        "Qc",
-        "Qd",
-        "Qh",
-        "Qs",
-        "Kc",
-        "Kd",
-        "Kh",
-        "Ks",
-        "Ac",
-        "Ad",
-        "Ah",
-        "As",
-    ];
+pub const CARDSSTRING: [&str; NUMBER_OF_CARDS] = [
+    "2c", "2d", "2h", "2s", "3c", "3d", "3h", "3s", "4c", "4d", "4h", "4s", "5c", "5d", "5h", "5s",
+    "6c", "6d", "6h", "6s", "7c", "7d", "7h", "7s", "8c", "8d", "8h", "8s", "9c", "9d", "9h", "9s",
+    "Tc", "Td", "Th", "Ts", "Jc", "Jd", "Jh", "Js", "Qc", "Qd", "Qh", "Qs", "Kc", "Kd", "Kh", "Ks",
+    "Ac", "Ad", "Ah", "As",
+];
 
 /// (card key, bit mask) of cards
 #[rustfmt::skip]

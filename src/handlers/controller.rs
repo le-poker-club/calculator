@@ -1,7 +1,9 @@
 use actix_web::{get, post, web, Responder};
 
-use crate::models::model::{CalculateOutsReq, CalculateOutsRsp, CalculateRatingReq, CalculateRatingRsp};
-use crate::services::evaluator::{calculate_rating_valid, CalculateRating, Evaluator};
+use crate::models::model::{
+    CalculateOutsReq, CalculateOutsRsp, CalculateRatingReq, CalculateRatingRsp,
+};
+use crate::services::evaluator::{CalculateRating, Evaluator};
 
 // 计算胜率
 #[post("/calculate_rating")]

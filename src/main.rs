@@ -1,18 +1,16 @@
 use std::collections::HashMap;
-use std::fmt::Debug;
-use std::io::Read;
 use std::panic;
 use std::time::Duration;
 
 use crate::models::model::THREAD_LOCAL_DATA;
-use crate::utils::log::{log_error_debug, log_error_display, log_info_debug, log_info_display};
+use crate::utils::log::{log_error_debug, log_info_debug, log_info_display};
 use actix_http;
 use actix_http::body;
 use actix_web::body::MessageBody;
 use actix_web::dev::{ServiceRequest, ServiceResponse};
-use actix_web::middleware::{from_fn, Logger, Next};
-use actix_web::web::{BytesMut, Payload, Query};
-use actix_web::{dev, web, App, Error, HttpMessage, HttpServer};
+use actix_web::middleware::{from_fn, Next};
+use actix_web::web::Query;
+use actix_web::{dev, web, App, Error, HttpServer};
 use anyhow::anyhow;
 use flexi_logger::{Age, Cleanup, Criterion, Duplicate, FileSpec, Naming, WriteMode};
 use uuid::Uuid;
@@ -26,9 +24,6 @@ fn panic_hook() {
     panic::set_hook(Box::new(|e| {
         log_error_debug("", &anyhow!("panic found:{:?}", e));
     }));
-}
-fn test() {
-    panic!("hello2");
 }
 
 fn bytes_to_payload(buf: web::Bytes) -> dev::Payload {
