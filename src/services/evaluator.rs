@@ -106,7 +106,7 @@ impl CalculateRating for Evaluator {
         let max_loop: u32 = 11000;
         // 如果remain_card >= 3 采用随机法直接计算
         if remain_card >= 3{
-            let mut rng = StdRng::from_entropy();
+            let mut rng = thread_rng();
             let mut loop_time:u32 = 0;
             while loop_time < max_loop {
                 let mut new_board = Hand::new();
