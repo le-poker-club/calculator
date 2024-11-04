@@ -6,7 +6,7 @@ use holdem_hand_evaluator::Hand;
 use itertools::Itertools;
 use rand::rngs::StdRng;
 use rand::seq::SliceRandom;
-use rand::{Rng, SeedableRng, thread_rng};
+use rand::{thread_rng, Rng, SeedableRng};
 
 use crate::models::error_model;
 use crate::models::model::{CalculateRatingReq, CalculateRatingRsp, CardsInfo, ClientRate};
@@ -97,7 +97,7 @@ impl CalculateRating for Evaluator {
         (0..remain_card).for_each(|i| {
             alive_card_index.push(i as i32 - 1);
         });
-                                                                    // 根据cards进行胜率计算
+        // 根据cards进行胜率计算
         let mut index = 0;
         let mut win_count_by_uid = HashMap::new();
         let mut draw_count: u64 = 0;
@@ -105,83 +105,88 @@ impl CalculateRating for Evaluator {
         let mut used_cards: HashSet<i32> = HashSet::new();
         let max_loop: u32 = 11000;
         // 如果remain_card >= 3 采用随机法直接计算
-        if remain_card >= 3{
+        if remain_card >= 3 {
             let mut rng = thread_rng();
-            let mut loop_time:u32 = 0;
+            let mut loop_time: u32 = 0;
             while loop_time < max_loop {
                 let mut new_board = Hand::new();
                 new_board += board;
                 let mut i = 0;
-                while i < remain_card{
+                while i < remain_card {
                     let random_number = rng.gen_range(0..alive_cards.len());
-                    if new_board.contains(alive_cards[random_number]){
-                        continue
+                    if new_board.contains(alive_cards[random_number]) {
+                        continue;
                     }
                     new_board = new_board.add_card(alive_cards[random_number]);
                     i += 1;
                 }
                 let mut max_evaluate: u16 = 0;
-                add_to_win_count(&user_cards,&mut draw_count,new_board,&mut win_count_by_uid);
-                loop_time+=1;
+                add_to_win_count(
+                    &user_cards,
+                    &mut draw_count,
+                    new_board,
+                    &mut win_count_by_uid,
+                );
+                loop_time += 1;
             }
-        }else {
+        } else {
             // 插入select宏
             tokio::select! {
-            // 1s足够了
-            _ = async{
-                tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
-            }=>{
-            },
-            _ = async{
-                // 限制循环次数
-                let mut loop_time:u32 = 0;
-                let mut can_remove_first = false;
-                while (index < remain_card ||remain_card == 0)  && loop_time < max_loop{
-                    loop_time+=1;
-                    let mut index_get=(false,false);
-                    if remain_card != 0{
-                        index_get =  get_index(
-                        &mut alive_card_index,
-                        index,
-                        alive_cards.len() as i32,
-                        &mut used_cards,
-                        &can_remove_first,
-                    );
-                    }
-
-                    match index_get{
-                        (true, _) => break,
-                        (false, true) => {
-                            index -= 1; // 跳到上一层
-                            tokio::task::yield_now().await;
-                            continue;
+                // 1s足够了
+                _ = async{
+                    tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
+                }=>{
+                },
+                _ = async{
+                    // 限制循环次数
+                    let mut loop_time:u32 = 0;
+                    let mut can_remove_first = false;
+                    while (index < remain_card ||remain_card == 0)  && loop_time < max_loop{
+                        loop_time+=1;
+                        let mut index_get=(false,false);
+                        if remain_card != 0{
+                            index_get =  get_index(
+                            &mut alive_card_index,
+                            index,
+                            alive_cards.len() as i32,
+                            &mut used_cards,
+                            &can_remove_first,
+                        );
                         }
-                        (false, false) => {
-                            if  remain_card == 0 || index == remain_card - 1 {
-                                can_remove_first = true;
-                                let mut new_board = Hand::new();
-                                // let mut debg = vec![];
-                                // 获取待发的牌
-                                (0..remain_card).for_each(|i| {
-                                    new_board =
-                                        new_board.add_card(alive_cards[alive_card_index[i] as usize]);
-                                    // debg.push(alive_card_index[i] as usize);
-                                });
-                                // log_debug_debug("alive_card_index", &debg);
-                                new_board = new_board + board;
-                                add_to_win_count(&user_cards,&mut draw_count,new_board,&mut win_count_by_uid);
-                                if remain_card == 0{
-                                    loop_time = max_loop+1;
-                                }
-                                // 命中最后一层后，最后一层需要index+1继续
+
+                        match index_get{
+                            (true, _) => break,
+                            (false, true) => {
+                                index -= 1; // 跳到上一层
+                                tokio::task::yield_now().await;
                                 continue;
                             }
+                            (false, false) => {
+                                if  remain_card == 0 || index == remain_card - 1 {
+                                    can_remove_first = true;
+                                    let mut new_board = Hand::new();
+                                    // let mut debg = vec![];
+                                    // 获取待发的牌
+                                    (0..remain_card).for_each(|i| {
+                                        new_board =
+                                            new_board.add_card(alive_cards[alive_card_index[i] as usize]);
+                                        // debg.push(alive_card_index[i] as usize);
+                                    });
+                                    // log_debug_debug("alive_card_index", &debg);
+                                    new_board = new_board + board;
+                                    add_to_win_count(&user_cards,&mut draw_count,new_board,&mut win_count_by_uid);
+                                    if remain_card == 0{
+                                        loop_time = max_loop+1;
+                                    }
+                                    // 命中最后一层后，最后一层需要index+1继续
+                                    continue;
+                                }
+                            }
                         }
+                        index += 1;
                     }
-                    index += 1;
-                }
-            }=>{}
-        }
+                }=>{}
+            }
         }
         // 根据win_count_by_uid进行rating的计算
         let mut total_num: u64 = win_count_by_uid.iter().map(|(_, v)| v).sum();
@@ -212,7 +217,12 @@ impl CalculateRating for Evaluator {
     }
 }
 
-fn add_to_win_count(user_cards:&Vec<CardsInfo>, draw_count: &mut u64, new_board :Hand, win_count_by_uid: &mut HashMap<String, u64>){
+fn add_to_win_count(
+    user_cards: &Vec<CardsInfo>,
+    draw_count: &mut u64,
+    new_board: Hand,
+    win_count_by_uid: &mut HashMap<String, u64>,
+) {
     let mut max_evaluate: u16 = 0;
     let mut max_value_uids = Vec::new();
     // 组合全部的牌，进行计算
@@ -228,9 +238,9 @@ fn add_to_win_count(user_cards:&Vec<CardsInfo>, draw_count: &mut u64, new_board 
         }
     });
     // 根据结果将对应的map值进行更新
-    if max_value_uids.len() > 1{
-        *draw_count+=1;
-    }else{
+    if max_value_uids.len() > 1 {
+        *draw_count += 1;
+    } else {
         for uid in max_value_uids {
             if let Some(x) = win_count_by_uid.get(uid) {
                 win_count_by_uid.insert(uid.clone(), x + 1);
@@ -256,9 +266,7 @@ fn get_index(
     alive_card_index[current_index] += 1;
     // 在alive_card_index内已经存在对应的牌了
     while alive_card_index[current_index] < alive_cards_len {
-        if let Some(_) =
-            used_cards.get(&alive_card_index[current_index])
-        {
+        if let Some(_) = used_cards.get(&alive_card_index[current_index]) {
             alive_card_index[current_index] += 1;
             continue;
         }
