@@ -89,6 +89,7 @@ async fn main() -> std::io::Result<()> {
             .wrap(from_fn(timeout_2secs))
             .service(handlers::controller::submit)
             .service(handlers::controller::hello)
+            .service(handlers::controller::calculate_outs)
     })
     .client_request_timeout(Duration::from_secs(1))
     .bind(("127.0.0.1", 8090))?
