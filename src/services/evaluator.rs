@@ -103,6 +103,8 @@ impl CalculateRating for Evaluator {
         // 已经出过的公共牌
         let mut used_cards: HashSet<i32> = HashSet::new();
         let max_loop: u32 = 11000;
+        // 如果remain_card ==0 采用随机法直接计算
+
         // 插入select宏
         tokio::select! {
             // 1s足够了
@@ -147,32 +149,7 @@ impl CalculateRating for Evaluator {
                                 });
                                 // log_debug_debug("alive_card_index", &debg);
                                 new_board = new_board + board;
-                                let mut max_evaluate: u16 = 0;
-                                let mut max_value_uids = Vec::new();
-                                // 组合全部的牌，进行计算
-                                user_cards.iter().for_each(|user_card| {
-                                    let evaluate_hand = user_card.hands + new_board;
-                                    let value = evaluate_hand.evaluate();
-                                    if value > max_evaluate {
-                                        max_value_uids.clear();
-                                        max_value_uids.push(user_card.uid);
-                                        max_evaluate = value;
-                                    } else if value == max_evaluate {
-                                        max_value_uids.push(user_card.uid);
-                                    }
-                                });
-                                // 根据结果将对应的map值进行更新
-                                if max_value_uids.len() > 1{
-                                    draw_count+=1;
-                                }else{
-                                     for uid in max_value_uids {
-                                    if let Some(x) = win_count_by_uid.get(uid) {
-                                        win_count_by_uid.insert(uid, x + 1);
-                                    } else {
-                                        win_count_by_uid.insert(uid, 1u64);
-                                    }
-                                }
-                                }
+                                add_to_win_count(&user_cards,&mut draw_count,new_board,&mut win_count_by_uid);
                                 if remain_card == 0{
                                     loop_time = max_loop+1;
                                 }
@@ -198,7 +175,7 @@ impl CalculateRating for Evaluator {
         for client in &req.clients {
             let uid = &client.uid;
             let uid_copy = uid.clone();
-            if let Some(v) = win_count_by_uid.get(&uid) {
+            if let Some(v) = win_count_by_uid.get(uid) {
                 calculate_rating_rsp.clients_rate.push(ClientRate {
                     uid: uid_copy,
                     rate: (v + draw_count) * 1000 / total_num,
@@ -211,6 +188,35 @@ impl CalculateRating for Evaluator {
             }
         }
         return calculate_rating_rsp;
+    }
+}
+
+fn add_to_win_count(user_cards:&Vec<CardsInfo>, draw_count: &mut u64, new_board :Hand, win_count_by_uid: &mut HashMap<String, u64>){
+    let mut max_evaluate: u16 = 0;
+    let mut max_value_uids = Vec::new();
+    // 组合全部的牌，进行计算
+    user_cards.iter().for_each(|user_card| {
+        let evaluate_hand = user_card.hands + new_board;
+        let value = evaluate_hand.evaluate();
+        if value > max_evaluate {
+            max_value_uids.clear();
+            max_value_uids.push(user_card.uid);
+            max_evaluate = value;
+        } else if value == max_evaluate {
+            max_value_uids.push(user_card.uid);
+        }
+    });
+    // 根据结果将对应的map值进行更新
+    if max_value_uids.len() > 1{
+        *draw_count+=1;
+    }else{
+        for uid in max_value_uids {
+            if let Some(x) = win_count_by_uid.get(uid) {
+                win_count_by_uid.insert(uid.clone(), x + 1);
+            } else {
+                win_count_by_uid.insert(uid.clone(), 1u64);
+            }
+        }
     }
 }
 
