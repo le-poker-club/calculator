@@ -9,7 +9,7 @@ use rand::seq::SliceRandom;
 use rand::{thread_rng, Rng, SeedableRng};
 
 use crate::models::error_model;
-use crate::models::model::{CalculateRatingReq, CalculateRatingRsp, CardsInfo, ClientRate};
+use crate::models::model::{CalculateOutsReq, CalculateOutsRsp, CalculateRatingReq, CalculateRatingRsp, CardsInfo, ClientRate};
 use crate::utils::log::{log_debug_debug, log_info_debug, log_info_display};
 
 // 可参见heads_up_win_frequency方法的compute_alive_cards方法。该方法可以直接找出可用的card
@@ -21,6 +21,7 @@ pub async fn evaluate(input: &String) -> u16 {
 #[async_trait]
 pub trait CalculateRating {
     async fn calculate_rating(&self, req: CalculateRatingReq) -> CalculateRatingRsp;
+    // async fn calculate_outs(&self,req:CalculateOutsReq) -> CalculateOutsRsp;
 }
 
 pub struct Evaluator {}
@@ -53,21 +54,9 @@ pub fn calculate_rating_valid(req: &CalculateRatingReq) -> (bool, Vec<CardsInfo>
     return (true, user_cards);
 }
 
-#[async_trait]
-// 对deal_cards为空的情况进行测试
-impl CalculateRating for Evaluator {
-    async fn calculate_rating(&self, req: CalculateRatingReq) -> CalculateRatingRsp {
-        let (valid, user_cards) = calculate_rating_valid(&req);
-        if !valid {
-            return CalculateRatingRsp {
-                code: error_model::ERROR_INVALID,
-                clients_rate: vec![],
-                msg: "req has duplicates or has empty string input,or client.len is lt 2"
-                    .to_string(),
-            };
-        }
-        let board = if let Some(board) = req
-            .deal_cards
+impl Evaluator{
+    fn get_board_and_alive_cards(&self,deal_cards: &Vec<String>,user_cards:&Vec<CardsInfo>) -> (Hand,Vec<usize>){
+        let board = if let Some(board) = deal_cards
             .iter()
             .map(|x| x.parse::<Hand>().unwrap())
             .reduce(|acc, e| acc + e)
@@ -76,7 +65,6 @@ impl CalculateRating for Evaluator {
         } else {
             Hand::new()
         };
-
         // 获取全部的hands和board的mark
         let mut mask = if let Some(mask) =
             user_cards
@@ -92,6 +80,65 @@ impl CalculateRating for Evaluator {
         mask = mask | board.get_mask();
         // // 计算剩余的cards
         let alive_cards = compute_alive_cards(mask);
+        (board,alive_cards)
+    }
+}
+
+#[async_trait]
+// 对deal_cards为空的情况进行测试
+impl CalculateRating for Evaluator {
+    // async fn calculate_outs(&self, req: CalculateOutsReq) -> CalculateOutsRsp {
+    //     let (valid, user_cards) = calculate_rating_valid(&req.into_rating_req());
+    //     if  !valid || req.deal_cards.len() < 3 {
+    //         return CalculateOutsRsp {
+    //             code: error_model::ERROR_INVALID,
+    //             outs: vec![],
+    //             msg: "eq has duplicates or has empty string input,or client.len is lt 2 or req deal cards should gt 2"
+    //                 .to_string(),
+    //         };
+    //     }
+    //     // 计算outs
+    //     let board = if let Some(board) = req
+    //         .deal_cards
+    //         .iter()
+    //         .map(|x| x.parse::<Hand>().unwrap())
+    //         .reduce(|acc, e| acc + e)
+    //     {
+    //         board
+    //     } else {
+    //         Hand::new()
+    //     };
+    //     // 获取全部的hands和board的mark
+    //     let mut mask = if let Some(mask) =
+    //         user_cards
+    //             .iter()
+    //             .map(|x| x.hands.get_mask())
+    //             .reduce(|acc, hand| {
+    //                 return acc | hand;
+    //             }) {
+    //         mask
+    //     } else {
+    //         0
+    //     };
+    //     mask = mask | board.get_mask();
+    //     // // 计算剩余的cards
+    //     let alive_cards = compute_alive_cards(mask);
+    //
+    //
+    //
+    // }
+    async fn calculate_rating(&self, req: CalculateRatingReq) -> CalculateRatingRsp {
+        let (valid, user_cards) = calculate_rating_valid(&req);
+        if !valid {
+            return CalculateRatingRsp {
+                code: error_model::ERROR_INVALID,
+                clients_rate: vec![],
+                msg: "req has duplicates or has empty string input,or client.len is lt 2"
+                    .to_string(),
+            };
+        }
+        let (board,alive_cards) = self.get_board_and_alive_cards(&req
+            .deal_cards,&user_cards);
         let remain_card = 5 - board.len();
         let mut alive_card_index: Vec<i32> = Vec::new();
         (0..remain_card).for_each(|i| {
@@ -215,7 +262,10 @@ impl CalculateRating for Evaluator {
         }
         return calculate_rating_rsp;
     }
+
 }
+
+
 
 fn add_to_win_count(
     user_cards: &Vec<CardsInfo>,

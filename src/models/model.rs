@@ -10,13 +10,14 @@ thread_local! {
 
 impl CalculateOutsReq{
     pub(crate) fn into_rating_req(&self) -> CalculateRatingReq {
-        return CalculateRatingReq{ clients: self.clients.clone(), deal_cards: vec![] }
+        return CalculateRatingReq{ clients: self.clients.clone(), deal_cards: self.deal_cards.clone() }
     }
 }
 
 #[derive(Deserialize, Serialize)]
 pub struct CalculateOutsReq {
     pub clients: Vec<UserCards>,
+    pub deal_cards: Vec<String>, // 公共牌
 }
 #[derive(Deserialize, Serialize)]
 pub struct CalculateOutsRsp {

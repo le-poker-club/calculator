@@ -12,10 +12,10 @@ pub async fn submit(req: web::Json<CalculateRatingReq>) -> web::Json<CalculateRa
 }
 
 // #[post("/calculate_outs")]
-pub async fn cal_outs(req: web::Json<CalculateOutsReq>) /*-> web::Json<CalculateOutsRsp>*/ {
-    let evaluator = Evaluator {};
-    let (a,b) = calculate_rating_valid(&req.into_inner().into_rating_req());
-}
+// pub async fn calculate_outs(req: web::Json<CalculateOutsReq>) -> web::Json<CalculateOutsRsp> {
+//     let evaluator = Evaluator {};
+//     let (a,b) = calculate_rating_valid(&req.into_inner().into_rating_req());
+// }
 
 #[get("/hello")]
 pub async fn hello() -> impl Responder {
