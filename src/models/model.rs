@@ -8,6 +8,29 @@ thread_local! {
     pub static THREAD_LOCAL_DATA: RefCell<Uuid> = RefCell::new(Uuid::new_v4());
 }
 
+impl CalculateOutsReq{
+    pub(crate) fn into_rating_req(&self) -> CalculateRatingReq {
+        return CalculateRatingReq{ clients: self.clients.clone(), deal_cards: vec![] }
+    }
+}
+
+#[derive(Deserialize, Serialize)]
+pub struct CalculateOutsReq {
+    pub clients: Vec<UserCards>,
+}
+#[derive(Deserialize, Serialize)]
+pub struct CalculateOutsRsp {
+    pub code: u32,
+    pub outs: Vec<Outs>,
+    pub msg: String,
+}
+#[derive(Deserialize, Serialize)]
+pub struct Outs{
+    pub cards: Vec<String>,
+    pub uid: String,
+}
+
+
 #[derive(Deserialize, Serialize)]
 pub struct CalculateRatingReq {
     pub clients: Vec<UserCards>,
@@ -26,7 +49,7 @@ pub struct ClientRate {
     pub rate: u64, // 1000为分母
 }
 
-#[derive(Deserialize, Serialize)]
+#[derive(Deserialize, Serialize,Clone)]
 pub struct UserCards {
     pub hands: [String; 2], // 手牌
     pub uid: String,        // 用户uid

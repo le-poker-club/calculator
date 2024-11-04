@@ -25,7 +25,7 @@ pub trait CalculateRating {
 
 pub struct Evaluator {}
 
-fn calculate_rating_valid(req: &CalculateRatingReq) -> (bool, Vec<CardsInfo>) {
+pub fn calculate_rating_valid(req: &CalculateRatingReq) -> (bool, Vec<CardsInfo>) {
     let length = req.deal_cards.len() + req.clients.len() * 2;
     let demo = String::from("");
     let mut vec: Vec<&String> = vec![&demo; length];
