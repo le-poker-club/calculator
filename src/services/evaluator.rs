@@ -4,8 +4,9 @@ use async_trait::async_trait;
 use chrono::Local;
 use holdem_hand_evaluator::Hand;
 use itertools::Itertools;
+use rand::rngs::StdRng;
 use rand::seq::SliceRandom;
-use rand::thread_rng;
+use rand::{Rng, SeedableRng, thread_rng};
 
 use crate::models::error_model;
 use crate::models::model::{CalculateRatingReq, CalculateRatingRsp, CardsInfo, ClientRate};
@@ -103,10 +104,29 @@ impl CalculateRating for Evaluator {
         // 已经出过的公共牌
         let mut used_cards: HashSet<i32> = HashSet::new();
         let max_loop: u32 = 11000;
-        // 如果remain_card ==0 采用随机法直接计算
-
-        // 插入select宏
-        tokio::select! {
+        // 如果remain_card >= 3 采用随机法直接计算
+        if remain_card >= 3{
+            let mut rng = StdRng::from_entropy();
+            let mut loop_time:u32 = 0;
+            while loop_time < max_loop {
+                let mut new_board = Hand::new();
+                new_board += board;
+                let mut i = 0;
+                while i < remain_card{
+                    let random_number = rng.gen_range(0..alive_cards.len());
+                    if new_board.contains(alive_cards[random_number]){
+                        continue
+                    }
+                    new_board = new_board.add_card(alive_cards[random_number]);
+                    i += 1;
+                }
+                let mut max_evaluate: u16 = 0;
+                add_to_win_count(&user_cards,&mut draw_count,new_board,&mut win_count_by_uid);
+                loop_time+=1;
+            }
+        }else {
+            // 插入select宏
+            tokio::select! {
             // 1s足够了
             _ = async{
                 tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
@@ -161,6 +181,7 @@ impl CalculateRating for Evaluator {
                     index += 1;
                 }
             }=>{}
+        }
         }
         // 根据win_count_by_uid进行rating的计算
         let mut total_num: u64 = win_count_by_uid.iter().map(|(_, v)| v).sum();
