@@ -17,11 +17,11 @@ mod tests {
             hands: ["2s".to_string(), "Ts".to_string()],
             uid: "2".to_string(),
         });
-        req.deal_cards.push("Ac".to_string());
-        req.deal_cards.push("Js".to_string());
-        req.deal_cards.push("Kh".to_string());
-        req.deal_cards.push("Kc".to_string());
-        req.deal_cards.push("Kd".to_string());
+        // req.deal_cards.push("Ac".to_string());
+        // req.deal_cards.push("Js".to_string());
+        // req.deal_cards.push("Kh".to_string());
+        // req.deal_cards.push("Kc".to_string());
+        // req.deal_cards.push("Kd".to_string());
         let evaluator = Evaluator {};
         let rsp: CalculateRatingRsp = evaluator.calculate_rating(req).await;
     }

@@ -90,23 +90,19 @@ impl CalculateRating for Evaluator {
         };
         mask = mask | board.get_mask();
         // // 计算剩余的cards
-        let mut alive_cards = vec![];
-        let mut alive_cards_demo = compute_alive_cards(mask);
+        let alive_cards = compute_alive_cards(mask);
         let remain_card = 5 - board.len();
-        for i in 1..=remain_card {
-            let mut alive_cards_temp = alive_cards_demo.clone();
-            let mut rng = thread_rng();
-            alive_cards_temp.shuffle(&mut rng);
-            alive_cards.push(alive_cards_temp);
-        }
-        let mut alive_card_index: Vec<i32> = vec![-1; remain_card]; // [0,1,2,3,4]
+        let mut alive_card_index: Vec<i32> = Vec::new();
+        (0..remain_card).for_each(|i| {
+            alive_card_index.push(i as i32 - 1);
+        });
                                                                     // 根据cards进行胜率计算
         let mut index = 0;
         let mut win_count_by_uid = HashMap::new();
         let mut draw_count: u64 = 0;
         // 已经出过的公共牌
-        let mut used_cards: HashSet<usize> = HashSet::new();
-        let max_loop: u32 = 10000000;
+        let mut used_cards: HashSet<i32> = HashSet::new();
+        let max_loop: u32 = 11000;
         // 插入select宏
         tokio::select! {
             // 1s足够了
@@ -125,10 +121,9 @@ impl CalculateRating for Evaluator {
                         index_get =  get_index(
                         &mut alive_card_index,
                         index,
-                        alive_cards_demo.len() as i32,
+                        alive_cards.len() as i32,
                         &mut used_cards,
                         &can_remove_first,
-                        &alive_cards,
                     );
                     }
 
@@ -147,8 +142,8 @@ impl CalculateRating for Evaluator {
                                 // 获取待发的牌
                                 (0..remain_card).for_each(|i| {
                                     new_board =
-                                        new_board.add_card(alive_cards[i][alive_card_index[i] as usize]);
-                                    // debg.push(alive_cards[i][alive_card_index[i] as usize]);
+                                        new_board.add_card(alive_cards[alive_card_index[i] as usize]);
+                                    // debg.push(alive_card_index[i] as usize);
                                 });
                                 // log_debug_debug("alive_card_index", &debg);
                                 new_board = new_board + board;
@@ -223,20 +218,19 @@ fn get_index(
     alive_card_index: &mut Vec<i32>,
     current_index: usize,
     alive_cards_len: i32,
-    used_cards: &mut HashSet<usize>,
+    used_cards: &mut HashSet<i32>,
     can_remove: &bool,
-    alive_cards: &Vec<Vec<usize>>,
 ) -> (bool, bool) {
     // 第一次的时候不能remove
     if *can_remove && alive_card_index[current_index] >= 0 {
-        used_cards.remove(&alive_cards[current_index][alive_card_index[current_index] as usize]);
+        used_cards.remove(&alive_card_index[current_index]);
     }
 
     alive_card_index[current_index] += 1;
     // 在alive_card_index内已经存在对应的牌了
     while alive_card_index[current_index] < alive_cards_len {
         if let Some(_) =
-            used_cards.get(&alive_cards[current_index][alive_card_index[current_index] as usize])
+            used_cards.get(&alive_card_index[current_index])
         {
             alive_card_index[current_index] += 1;
             continue;
@@ -256,7 +250,7 @@ fn get_index(
             return_to_previous = true;
         }
     } else {
-        used_cards.insert(alive_cards[current_index][alive_card_index[current_index] as usize]);
+        used_cards.insert(alive_card_index[current_index]);
     }
     (finish, return_to_previous)
 }
