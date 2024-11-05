@@ -6,14 +6,14 @@ use crate::models::model::{
 use crate::services::evaluator::{CalculateRating, Evaluator};
 
 // 计算胜率
-#[post("/calculate_rating")]
+#[post("/v1/calculate_rating")]
 pub async fn submit(req: web::Json<CalculateRatingReq>) -> web::Json<CalculateRatingRsp> {
     let evaluator = Evaluator {};
     let rsp: CalculateRatingRsp = evaluator.calculate_rating(req.into_inner()).await;
     return web::Json(rsp);
 }
 
-#[post("/calculate_outs")]
+#[post("/v1/calculate_outs")]
 pub async fn calculate_outs(req: web::Json<CalculateOutsReq>) -> web::Json<CalculateOutsRsp> {
     let evaluator = Evaluator {};
     let rsp: CalculateOutsRsp = evaluator.calculate_outs(req.into_inner()).await;

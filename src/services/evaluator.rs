@@ -265,12 +265,12 @@ impl CalculateRating for Evaluator {
             if let Some(v) = win_count_by_uid.get(uid) {
                 calculate_rating_rsp.clients_rate.push(ClientRate {
                     uid: uid_copy,
-                    rate: (v + draw_count) * 1000 / total_num,
+                    rate: (v + draw_count) * 10000 / total_num,
                 })
             } else {
                 calculate_rating_rsp.clients_rate.push(ClientRate {
                     uid: uid_copy,
-                    rate: (draw_count) * 1000 / total_num,
+                    rate: (draw_count) * 10000 / total_num,
                 })
             }
         }
