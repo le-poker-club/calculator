@@ -87,7 +87,7 @@ async fn main() -> std::io::Result<()> {
             .service(handlers::controller::calculate_outs)
     })
     .client_request_timeout(Duration::from_secs(1))
-    .bind(("127.0.0.1", 8090))?
+    .bind(("0.0.0.0", 8090))?
     .run()
     .await
 }
