@@ -40,6 +40,7 @@ async fn mutate_body_type_with_extractors(
 ) -> Result<ServiceResponse<impl MessageBody>, Error> {
     let my_uuid = Uuid::new_v4();
     THREAD_LOCAL_DATA.set(my_uuid);
+    log_info_display("req url", req.uri());
     log_info_display("req body is", &string_body);
     log_info_debug("req query string", &query);
     req.set_payload(bytes_to_payload(web::Bytes::from(string_body)));
