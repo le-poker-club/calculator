@@ -683,7 +683,7 @@ checksum = "d231dfb89cfffdbc30e7fc41579ed6066ad03abda9e567ccafae602b97ec5024"
 [[package]]
 name = "holdem-hand-evaluator"
 version = "0.1.0"
-source = "git+https://github.com/le-poker-club/holdem-hand-evaluator#06cea816f39dddc7280571ea62021ccbc2f1e5a6"
+source = "git+https://github.com/le-poker-club/holdem-hand-evaluator#11339a9433f1c731b6559a3c8c767237874480d6"
 dependencies = [
  "holdem-hand-evaluator-assets",
 ]
@@ -691,7 +691,7 @@ dependencies = [
 [[package]]
 name = "holdem-hand-evaluator-assets"
 version = "0.1.0"
-source = "git+https://github.com/le-poker-club/holdem-hand-evaluator#06cea816f39dddc7280571ea62021ccbc2f1e5a6"
+source = "git+https://github.com/le-poker-club/holdem-hand-evaluator#11339a9433f1c731b6559a3c8c767237874480d6"
 
 [[package]]
 name = "http"
