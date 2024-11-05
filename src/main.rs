@@ -1,6 +1,7 @@
 use std::collections::HashMap;
-use std::panic;
+use std::env::VarError;
 use std::time::Duration;
+use std::{env, panic};
 
 use crate::models::model::THREAD_LOCAL_DATA;
 use crate::utils::log::{log_error_debug, log_info_debug, log_info_display};
@@ -60,13 +61,14 @@ async fn mutate_body_type_with_extractors(
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     panic_hook();
+    let mut log_dir = "";
+    match env::var("PROFILE") {
+        Ok(_) => log_dir = "/data",
+        Err(_) => log_dir = "./logs",
+    }
     let _e = flexi_logger::Logger::try_with_str("info")
         .unwrap()
-        .log_to_file(
-            FileSpec::default()
-                .basename("calculate")
-                .directory("./logs"),
-        )
+        .log_to_file(FileSpec::default().basename("calculate").directory(log_dir))
         .duplicate_to_stdout(Duplicate::Debug)
         .append()
         .write_mode(WriteMode::Async)
@@ -88,7 +90,7 @@ async fn main() -> std::io::Result<()> {
             .service(handlers::controller::calculate_outs)
     })
     .client_request_timeout(Duration::from_secs(1))
-    .bind(("127.0.0.1", 8090))?
+    .bind(("0.0.0.0", 8090))?
     .run()
     .await
 }

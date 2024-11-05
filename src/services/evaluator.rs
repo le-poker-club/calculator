@@ -111,7 +111,7 @@ impl CalculateRating for Evaluator {
             new_board = new_board + board;
             let mut max_evaluate: u16 = 0;
             let mut max_value_uids = vec![];
-            let mut draw_value_uids  = vec![];
+            let mut draw_value_uids = vec![];
             user_cards.iter().for_each(|user_card| {
                 let evaluate_hand = user_card.hands + new_board;
                 let value = evaluate_hand.evaluate();
@@ -134,7 +134,7 @@ impl CalculateRating for Evaluator {
             }
             i += 1;
         }
-        draw_outs_by_uid.into_iter().for_each(|(uid,draw_outs)| {
+        draw_outs_by_uid.into_iter().for_each(|(uid, draw_outs)| {
             outs_by_uid.get_mut(uid).unwrap().extend(draw_outs);
         });
         let mut return_outs = vec![];
