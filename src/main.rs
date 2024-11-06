@@ -63,7 +63,7 @@ async fn main() -> std::io::Result<()> {
     panic_hook();
     let mut log_dir = "";
     match env::var("PROFILE") {
-        Ok(_) => log_dir = "/data",
+        Ok(_) => log_dir = "/data/logs",
         Err(_) => log_dir = "./logs",
     }
     let _e = flexi_logger::Logger::try_with_str("info")
