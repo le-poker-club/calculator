@@ -84,7 +84,7 @@ impl Evaluator {
 }
 
 #[async_trait]
-// 对deal_cards为空的情况进行测试
+// win的牌放在前面，draw的牌放在后面
 impl CalculateRating for Evaluator {
     async fn calculate_outs(&self, req: CalculateOutsReq) -> CalculateOutsRsp {
         let temp = req.into_rating_req();
@@ -100,15 +100,18 @@ impl CalculateRating for Evaluator {
         let (board, alive_cards) = self.get_board_and_alive_cards(&req.deal_cards, &user_cards);
         let mut i = 0;
         let mut outs_by_uid = HashMap::new();
+        let mut draw_outs_by_uid = HashMap::new();
         for card_info in &user_cards {
             outs_by_uid.insert(card_info.uid, vec![]);
+            draw_outs_by_uid.insert(card_info.uid, vec![]);
         }
         while i < alive_cards.len() {
             let mut new_board = Hand::new();
             new_board = new_board.add_card(alive_cards[i]);
             new_board = new_board + board;
             let mut max_evaluate: u16 = 0;
-            let mut max_value_uids = Vec::new();
+            let mut max_value_uids = vec![];
+            let mut draw_value_uids = vec![];
             user_cards.iter().for_each(|user_card| {
                 let evaluate_hand = user_card.hands + new_board;
                 let value = evaluate_hand.evaluate();
@@ -116,15 +119,24 @@ impl CalculateRating for Evaluator {
                     max_value_uids.clear();
                     max_value_uids.push(user_card.uid);
                     max_evaluate = value;
+                    draw_value_uids.clear();
                 } else if value == max_evaluate {
-                    max_value_uids.push(user_card.uid);
+                    draw_value_uids.extend(max_value_uids.iter());
+                    max_value_uids.clear();
+                    draw_value_uids.push(user_card.uid);
                 }
             });
             for uid in max_value_uids {
                 outs_by_uid.get_mut(uid).unwrap().push(alive_cards[i]);
             }
+            for uid in draw_value_uids {
+                draw_outs_by_uid.get_mut(uid).unwrap().push(alive_cards[i]);
+            }
             i += 1;
         }
+        draw_outs_by_uid.into_iter().for_each(|(uid, draw_outs)| {
+            outs_by_uid.get_mut(uid).unwrap().extend(draw_outs);
+        });
         let mut return_outs = vec![];
         for (uid, outs) in outs_by_uid.into_iter() {
             let mut outs_string = vec![];
@@ -380,67 +392,67 @@ fn compute_alive_cards(mask: u64) -> Vec<usize> {
 }
 
 pub const CARDSSTRING: [&str; NUMBER_OF_CARDS] = [
-    "2c", "2d", "2h", "2s", "3c", "3d", "3h", "3s", "4c", "4d", "4h", "4s", "5c", "5d", "5h", "5s",
-    "6c", "6d", "6h", "6s", "7c", "7d", "7h", "7s", "8c", "8d", "8h", "8s", "9c", "9d", "9h", "9s",
-    "Tc", "Td", "Th", "Ts", "Jc", "Jd", "Jh", "Js", "Qc", "Qd", "Qh", "Qs", "Kc", "Kd", "Kh", "Ks",
-    "Ac", "Ad", "Ah", "As",
+    "2s", "2h", "2c", "2d", "3s", "3h", "3c", "3d", "4s", "4h", "4c", "4d", "5s", "5h", "5c", "5d",
+    "6s", "6h", "6c", "6d", "7s", "7h", "7c", "7d", "8s", "8h", "8c", "8d", "9s", "9h", "9c", "9d",
+    "Ts", "Th", "Tc", "Td", "Js", "Jh", "Jc", "Jd", "Qs", "Qh", "Qc", "Qd", "Ks", "Kh", "Kc", "Kd",
+    "As", "Ah", "Ac", "Ad",
 ];
 
 /// (card key, bit mask) of cards
 #[rustfmt::skip]
 pub const CARDS: [(u64, u64); NUMBER_OF_CARDS] = [
+    /* 2s */ (RANK_BASES[0] + (SUIT_BASES[3] << SUIT_SHIFT), 0x1000000000000),
+    /* 2h */ (RANK_BASES[0] + (SUIT_BASES[2] << SUIT_SHIFT), 0x100000000),
     /* 2c */ (RANK_BASES[0] + (SUIT_BASES[0] << SUIT_SHIFT), 0x1),
     /* 2d */ (RANK_BASES[0] + (SUIT_BASES[1] << SUIT_SHIFT), 0x10000),
-    /* 2h */ (RANK_BASES[0] + (SUIT_BASES[2] << SUIT_SHIFT), 0x100000000),
-    /* 2s */ (RANK_BASES[0] + (SUIT_BASES[3] << SUIT_SHIFT), 0x1000000000000),
+    /* 3s */ (RANK_BASES[1] + (SUIT_BASES[3] << SUIT_SHIFT), 0x2000000000000),
+    /* 3h */ (RANK_BASES[1] + (SUIT_BASES[2] << SUIT_SHIFT), 0x200000000),
     /* 3c */ (RANK_BASES[1] + (SUIT_BASES[0] << SUIT_SHIFT), 0x2),
     /* 3d */ (RANK_BASES[1] + (SUIT_BASES[1] << SUIT_SHIFT), 0x20000),
-    /* 3h */ (RANK_BASES[1] + (SUIT_BASES[2] << SUIT_SHIFT), 0x200000000),
-    /* 3s */ (RANK_BASES[1] + (SUIT_BASES[3] << SUIT_SHIFT), 0x2000000000000),
+    /* 4s */ (RANK_BASES[2] + (SUIT_BASES[3] << SUIT_SHIFT), 0x4000000000000),
+    /* 4h */ (RANK_BASES[2] + (SUIT_BASES[2] << SUIT_SHIFT), 0x400000000),
     /* 4c */ (RANK_BASES[2] + (SUIT_BASES[0] << SUIT_SHIFT), 0x4),
     /* 4d */ (RANK_BASES[2] + (SUIT_BASES[1] << SUIT_SHIFT), 0x40000),
-    /* 4h */ (RANK_BASES[2] + (SUIT_BASES[2] << SUIT_SHIFT), 0x400000000),
-    /* 4s */ (RANK_BASES[2] + (SUIT_BASES[3] << SUIT_SHIFT), 0x4000000000000),
+    /* 5s */ (RANK_BASES[3] + (SUIT_BASES[3] << SUIT_SHIFT), 0x8000000000000),
+    /* 5h */ (RANK_BASES[3] + (SUIT_BASES[2] << SUIT_SHIFT), 0x800000000),
     /* 5c */ (RANK_BASES[3] + (SUIT_BASES[0] << SUIT_SHIFT), 0x8),
     /* 5d */ (RANK_BASES[3] + (SUIT_BASES[1] << SUIT_SHIFT), 0x80000),
-    /* 5h */ (RANK_BASES[3] + (SUIT_BASES[2] << SUIT_SHIFT), 0x800000000),
-    /* 5s */ (RANK_BASES[3] + (SUIT_BASES[3] << SUIT_SHIFT), 0x8000000000000),
+    /* 6s */ (RANK_BASES[4] + (SUIT_BASES[3] << SUIT_SHIFT), 0x10000000000000),
+    /* 6h */ (RANK_BASES[4] + (SUIT_BASES[2] << SUIT_SHIFT), 0x1000000000),
     /* 6c */ (RANK_BASES[4] + (SUIT_BASES[0] << SUIT_SHIFT), 0x10),
     /* 6d */ (RANK_BASES[4] + (SUIT_BASES[1] << SUIT_SHIFT), 0x100000),
-    /* 6h */ (RANK_BASES[4] + (SUIT_BASES[2] << SUIT_SHIFT), 0x1000000000),
-    /* 6s */ (RANK_BASES[4] + (SUIT_BASES[3] << SUIT_SHIFT), 0x10000000000000),
+    /* 7s */ (RANK_BASES[5] + (SUIT_BASES[3] << SUIT_SHIFT), 0x20000000000000),
+    /* 7h */ (RANK_BASES[5] + (SUIT_BASES[2] << SUIT_SHIFT), 0x2000000000),
     /* 7c */ (RANK_BASES[5] + (SUIT_BASES[0] << SUIT_SHIFT), 0x20),
     /* 7d */ (RANK_BASES[5] + (SUIT_BASES[1] << SUIT_SHIFT), 0x200000),
-    /* 7h */ (RANK_BASES[5] + (SUIT_BASES[2] << SUIT_SHIFT), 0x2000000000),
-    /* 7s */ (RANK_BASES[5] + (SUIT_BASES[3] << SUIT_SHIFT), 0x20000000000000),
+    /* 8s */ (RANK_BASES[6] + (SUIT_BASES[3] << SUIT_SHIFT), 0x40000000000000),
+    /* 8h */ (RANK_BASES[6] + (SUIT_BASES[2] << SUIT_SHIFT), 0x4000000000),
     /* 8c */ (RANK_BASES[6] + (SUIT_BASES[0] << SUIT_SHIFT), 0x40),
     /* 8d */ (RANK_BASES[6] + (SUIT_BASES[1] << SUIT_SHIFT), 0x400000),
-    /* 8h */ (RANK_BASES[6] + (SUIT_BASES[2] << SUIT_SHIFT), 0x4000000000),
-    /* 8s */ (RANK_BASES[6] + (SUIT_BASES[3] << SUIT_SHIFT), 0x40000000000000),
+    /* 9s */ (RANK_BASES[7] + (SUIT_BASES[3] << SUIT_SHIFT), 0x80000000000000),
+    /* 9h */ (RANK_BASES[7] + (SUIT_BASES[2] << SUIT_SHIFT), 0x8000000000),
     /* 9c */ (RANK_BASES[7] + (SUIT_BASES[0] << SUIT_SHIFT), 0x80),
     /* 9d */ (RANK_BASES[7] + (SUIT_BASES[1] << SUIT_SHIFT), 0x800000),
-    /* 9h */ (RANK_BASES[7] + (SUIT_BASES[2] << SUIT_SHIFT), 0x8000000000),
-    /* 9s */ (RANK_BASES[7] + (SUIT_BASES[3] << SUIT_SHIFT), 0x80000000000000),
+    /* Ts */ (RANK_BASES[8] + (SUIT_BASES[3] << SUIT_SHIFT), 0x100000000000000),
+    /* Th */ (RANK_BASES[8] + (SUIT_BASES[2] << SUIT_SHIFT), 0x10000000000),
     /* Tc */ (RANK_BASES[8] + (SUIT_BASES[0] << SUIT_SHIFT), 0x100),
     /* Td */ (RANK_BASES[8] + (SUIT_BASES[1] << SUIT_SHIFT), 0x1000000),
-    /* Th */ (RANK_BASES[8] + (SUIT_BASES[2] << SUIT_SHIFT), 0x10000000000),
-    /* Ts */ (RANK_BASES[8] + (SUIT_BASES[3] << SUIT_SHIFT), 0x100000000000000),
+    /* Js */ (RANK_BASES[9] + (SUIT_BASES[3] << SUIT_SHIFT), 0x200000000000000),
+    /* Jh */ (RANK_BASES[9] + (SUIT_BASES[2] << SUIT_SHIFT), 0x20000000000),
     /* Jc */ (RANK_BASES[9] + (SUIT_BASES[0] << SUIT_SHIFT), 0x200),
     /* Jd */ (RANK_BASES[9] + (SUIT_BASES[1] << SUIT_SHIFT), 0x2000000),
-    /* Jh */ (RANK_BASES[9] + (SUIT_BASES[2] << SUIT_SHIFT), 0x20000000000),
-    /* Js */ (RANK_BASES[9] + (SUIT_BASES[3] << SUIT_SHIFT), 0x200000000000000),
+    /* Qs */ (RANK_BASES[10] + (SUIT_BASES[3] << SUIT_SHIFT), 0x400000000000000),
+    /* Qh */ (RANK_BASES[10] + (SUIT_BASES[2] << SUIT_SHIFT), 0x40000000000),
     /* Qc */ (RANK_BASES[10] + (SUIT_BASES[0] << SUIT_SHIFT), 0x400),
     /* Qd */ (RANK_BASES[10] + (SUIT_BASES[1] << SUIT_SHIFT), 0x4000000),
-    /* Qh */ (RANK_BASES[10] + (SUIT_BASES[2] << SUIT_SHIFT), 0x40000000000),
-    /* Qs */ (RANK_BASES[10] + (SUIT_BASES[3] << SUIT_SHIFT), 0x400000000000000),
+    /* Ks */ (RANK_BASES[11] + (SUIT_BASES[3] << SUIT_SHIFT), 0x800000000000000),
+    /* Kh */ (RANK_BASES[11] + (SUIT_BASES[2] << SUIT_SHIFT), 0x80000000000),
     /* Kc */ (RANK_BASES[11] + (SUIT_BASES[0] << SUIT_SHIFT), 0x800),
     /* Kd */ (RANK_BASES[11] + (SUIT_BASES[1] << SUIT_SHIFT), 0x8000000),
-    /* Kh */ (RANK_BASES[11] + (SUIT_BASES[2] << SUIT_SHIFT), 0x80000000000),
-    /* Ks */ (RANK_BASES[11] + (SUIT_BASES[3] << SUIT_SHIFT), 0x800000000000000),
+    /* As */ (RANK_BASES[12] + (SUIT_BASES[3] << SUIT_SHIFT), 0x1000000000000000),
+    /* Ah */ (RANK_BASES[12] + (SUIT_BASES[2] << SUIT_SHIFT), 0x100000000000),
     /* Ac */ (RANK_BASES[12] + (SUIT_BASES[0] << SUIT_SHIFT), 0x1000),
     /* Ad */ (RANK_BASES[12] + (SUIT_BASES[1] << SUIT_SHIFT), 0x10000000),
-    /* Ah */ (RANK_BASES[12] + (SUIT_BASES[2] << SUIT_SHIFT), 0x100000000000),
-    /* As */ (RANK_BASES[12] + (SUIT_BASES[3] << SUIT_SHIFT), 0x1000000000000000),
 ];
 
 /// rank keys that guarantee a unique sum for every rank combination of 5-7 cards.
