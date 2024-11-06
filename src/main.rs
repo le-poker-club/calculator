@@ -1,6 +1,7 @@
 use std::collections::HashMap;
-use std::panic;
+use std::env::VarError;
 use std::time::Duration;
+use std::{env, panic};
 
 use crate::models::model::THREAD_LOCAL_DATA;
 use crate::utils::log::{log_error_debug, log_info_debug, log_info_display};
@@ -40,6 +41,7 @@ async fn mutate_body_type_with_extractors(
 ) -> Result<ServiceResponse<impl MessageBody>, Error> {
     let my_uuid = Uuid::new_v4();
     THREAD_LOCAL_DATA.set(my_uuid);
+    log_info_display("req url", req.uri());
     log_info_display("req body is", &string_body);
     log_info_debug("req query string", &query);
     req.set_payload(bytes_to_payload(web::Bytes::from(string_body)));
@@ -59,13 +61,14 @@ async fn mutate_body_type_with_extractors(
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     panic_hook();
+    let mut log_dir = "";
+    match env::var("PROFILE") {
+        Ok(_) => log_dir = "/data/logs",
+        Err(_) => log_dir = "./logs",
+    }
     let _e = flexi_logger::Logger::try_with_str("info")
         .unwrap()
-        .log_to_file(
-            FileSpec::default()
-                .basename("calculate")
-                .directory("./logs"),
-        )
+        .log_to_file(FileSpec::default().basename("calculate").directory(log_dir))
         .duplicate_to_stdout(Duplicate::Debug)
         .append()
         .write_mode(WriteMode::Async)
