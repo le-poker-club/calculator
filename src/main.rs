@@ -66,9 +66,14 @@ async fn main() -> std::io::Result<()> {
         Ok(_) => log_dir = "/data/logs",
         Err(_) => log_dir = "./logs",
     }
+    let mut ip:String;
+    match env::var("POD_IP") {
+        Ok(v) => ip = v,
+        Err(_) => ip = "".to_string(),
+    }
     let _e = flexi_logger::Logger::try_with_str("info")
         .unwrap()
-        .log_to_file(FileSpec::default().basename("calculate").directory(log_dir))
+        .log_to_file(FileSpec::default().basename(format!("{}-{}","calculate",ip)).directory(log_dir))
         .duplicate_to_stdout(Duplicate::Debug)
         .append()
         .write_mode(WriteMode::Async)
