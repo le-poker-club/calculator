@@ -1,5 +1,4 @@
 use std::collections::HashMap;
-use std::env::VarError;
 use std::time::Duration;
 use std::{env, panic};
 
@@ -66,7 +65,7 @@ async fn main() -> std::io::Result<()> {
         Ok(_) => log_dir = "/data/logs",
         Err(_) => log_dir = "./logs",
     }
-    let mut ip:String;
+    let ip:String;
     match env::var("POD_IP") {
         Ok(v) => ip = v,
         Err(_) => ip = "".to_string(),
