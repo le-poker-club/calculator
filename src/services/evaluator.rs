@@ -177,6 +177,7 @@ impl CalculateRating for Evaluator {
         // 根据cards进行胜率计算
         let mut index = 0;
         let mut win_count_by_uid = HashMap::new();
+        let mut draw_count_by_uid = HashMap::new();
         let mut draw_count: u64 = 0;
         // 已经出过的公共牌
         let mut used_cards: HashSet<i32> = HashSet::new();
@@ -199,6 +200,7 @@ impl CalculateRating for Evaluator {
                 }
                 add_to_win_count(
                     &user_cards,
+                    &mut draw_count_by_uid,
                     &mut draw_count,
                     new_board,
                     &mut win_count_by_uid,
@@ -250,7 +252,7 @@ impl CalculateRating for Evaluator {
                                     });
                                     // log_debug_debug("alive_card_index", &debg);
                                     new_board = new_board + board;
-                                    add_to_win_count(&user_cards,&mut draw_count,new_board,&mut win_count_by_uid);
+                                    add_to_win_count(&user_cards,&mut draw_count_by_uid,&mut draw_count,new_board,&mut win_count_by_uid);
                                     if remain_card == 0{
                                         loop_time = max_loop+1;
                                     }
@@ -272,22 +274,18 @@ impl CalculateRating for Evaluator {
             clients_rate: vec![],
             msg: "".to_string(),
         };
-        log_info_debug("draw", &draw_count);
+        log_info_debug("draw", &draw_count_by_uid);
         log_info_debug("win", &win_count_by_uid);
         for client in &req.clients {
             let uid = &client.uid;
             let uid_copy = uid.clone();
-            if let Some(v) = win_count_by_uid.get(uid) {
-                calculate_rating_rsp.clients_rate.push(ClientRate {
-                    uid: uid_copy,
-                    rate: (v + draw_count) * 10000 / total_num,
-                })
-            } else {
-                calculate_rating_rsp.clients_rate.push(ClientRate {
-                    uid: uid_copy,
-                    rate: (draw_count) * 10000 / total_num,
-                })
-            }
+            let zero_u64: u64 = 0;
+            let draw_count_value = draw_count_by_uid.get(uid).unwrap_or_else(|| &zero_u64);
+            let win_count_value = win_count_by_uid.get(uid).unwrap_or_else(|| &zero_u64);
+            calculate_rating_rsp.clients_rate.push(ClientRate {
+                uid: uid_copy,
+                rate: (win_count_value + draw_count_value) * 10000 / total_num,
+            })
         }
         return calculate_rating_rsp;
     }
@@ -295,6 +293,7 @@ impl CalculateRating for Evaluator {
 
 fn add_to_win_count(
     user_cards: &Vec<CardsInfo>,
+    draw_count_by_uid: &mut HashMap<String, u64>,
     draw_count: &mut u64,
     new_board: Hand,
     win_count_by_uid: &mut HashMap<String, u64>,
@@ -313,16 +312,16 @@ fn add_to_win_count(
             max_value_uids.push(user_card.uid);
         }
     });
-    // 根据结果将对应的map值进行更新
+    let mut temp = win_count_by_uid;
     if max_value_uids.len() > 1 {
+        temp = draw_count_by_uid;
         *draw_count += 1;
-    } else {
-        for uid in max_value_uids {
-            if let Some(x) = win_count_by_uid.get(uid) {
-                win_count_by_uid.insert(uid.clone(), x + 1);
-            } else {
-                win_count_by_uid.insert(uid.clone(), 1u64);
-            }
+    }
+    for uid in max_value_uids {
+        if let Some(x) = temp.get(uid) {
+            temp.insert(uid.clone(), x + 1);
+        } else {
+            temp.insert(uid.clone(), 1u64);
         }
     }
 }
