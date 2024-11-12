@@ -97,46 +97,49 @@ impl CalculateRating for Evaluator {
                     .to_string(),
             };
         }
-        let (board, alive_cards) = self.get_board_and_alive_cards(&req.deal_cards, &user_cards);
-        let mut i = 0;
         let mut outs_by_uid = HashMap::new();
         let mut draw_outs_by_uid = HashMap::new();
         for card_info in &user_cards {
             outs_by_uid.insert(card_info.uid, vec![]);
             draw_outs_by_uid.insert(card_info.uid, vec![]);
         }
-        while i < alive_cards.len() {
-            let mut new_board = Hand::new();
-            new_board = new_board.add_card(alive_cards[i]);
-            new_board = new_board + board;
-            let mut max_evaluate: u16 = 0;
-            let mut max_value_uids = vec![];
-            let mut draw_value_uids = vec![];
-            user_cards.iter().for_each(|user_card| {
-                let evaluate_hand = user_card.hands + new_board;
-                let value = evaluate_hand.evaluate();
-                if value > max_evaluate {
-                    max_value_uids.clear();
-                    max_value_uids.push(user_card.uid);
-                    max_evaluate = value;
-                    draw_value_uids.clear();
-                } else if value == max_evaluate {
-                    draw_value_uids.extend(max_value_uids.iter());
-                    max_value_uids.clear();
-                    draw_value_uids.push(user_card.uid);
+        if req.deal_cards.len() < 5 {
+            let (board, alive_cards) = self.get_board_and_alive_cards(&req.deal_cards, &user_cards);
+            let mut i = 0;
+            while i < alive_cards.len() {
+                let mut new_board = Hand::new();
+                new_board = new_board.add_card(alive_cards[i]);
+                new_board = new_board + board;
+                let mut max_evaluate: u16 = 0;
+                let mut max_value_uids = vec![];
+                let mut draw_value_uids = vec![];
+                user_cards.iter().for_each(|user_card| {
+                    let evaluate_hand = user_card.hands + new_board;
+                    let value = evaluate_hand.evaluate();
+                    if value > max_evaluate {
+                        max_value_uids.clear();
+                        max_value_uids.push(user_card.uid);
+                        max_evaluate = value;
+                        draw_value_uids.clear();
+                    } else if value == max_evaluate {
+                        draw_value_uids.extend(max_value_uids.iter());
+                        max_value_uids.clear();
+                        draw_value_uids.push(user_card.uid);
+                    }
+                });
+                for uid in max_value_uids {
+                    outs_by_uid.get_mut(uid).unwrap().push(alive_cards[i]);
                 }
+                for uid in draw_value_uids {
+                    draw_outs_by_uid.get_mut(uid).unwrap().push(alive_cards[i]);
+                }
+                i += 1;
+            }
+            draw_outs_by_uid.into_iter().for_each(|(uid, draw_outs)| {
+                outs_by_uid.get_mut(uid).unwrap().extend(draw_outs);
             });
-            for uid in max_value_uids {
-                outs_by_uid.get_mut(uid).unwrap().push(alive_cards[i]);
-            }
-            for uid in draw_value_uids {
-                draw_outs_by_uid.get_mut(uid).unwrap().push(alive_cards[i]);
-            }
-            i += 1;
         }
-        draw_outs_by_uid.into_iter().for_each(|(uid, draw_outs)| {
-            outs_by_uid.get_mut(uid).unwrap().extend(draw_outs);
-        });
+
         let mut return_outs = vec![];
         for (uid, outs) in outs_by_uid.into_iter() {
             let mut outs_string = vec![];
