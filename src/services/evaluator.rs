@@ -53,6 +53,7 @@ impl Evaluator {
     fn get_board_and_alive_cards(
         &self,
         deal_cards: &Vec<String>,
+        dead_cards: &Vec<String>,
         user_cards: &Vec<CardsInfo>,
     ) -> (Hand, Vec<usize>) {
         let board = if let Some(board) = deal_cards
@@ -76,7 +77,16 @@ impl Evaluator {
         } else {
             0
         };
-        mask = mask | board.get_mask();
+        let dead_cards_hands = if let Some(dead_card) = dead_cards
+            .iter()
+            .map(|x| x.parse::<Hand>().unwrap())
+            .reduce(|acc, e| acc + e)
+        {
+            dead_card
+        } else {
+            Hand::new()
+        };
+        mask = mask | board.get_mask() | dead_cards_hands.get_mask();
         // // 计算剩余的cards
         let alive_cards = compute_alive_cards(mask);
         (board, alive_cards)
@@ -104,7 +114,8 @@ impl CalculateRating for Evaluator {
             draw_outs_by_uid.insert(card_info.uid, vec![]);
         }
         if req.deal_cards.len() < 5 {
-            let (board, alive_cards) = self.get_board_and_alive_cards(&req.deal_cards, &user_cards);
+            let (board, alive_cards) =
+                self.get_board_and_alive_cards(&req.deal_cards, &req.dead_cards, &user_cards);
             let mut i = 0;
             while i < alive_cards.len() {
                 let mut new_board = Hand::new();
@@ -168,7 +179,8 @@ impl CalculateRating for Evaluator {
                     .to_string(),
             };
         }
-        let (board, alive_cards) = self.get_board_and_alive_cards(&req.deal_cards, &user_cards);
+        let (board, alive_cards) =
+            self.get_board_and_alive_cards(&req.deal_cards, &req.dead_cards, &user_cards);
         let remain_card = 5 - board.len();
         let mut alive_card_index: Vec<i32> = Vec::new();
         (0..remain_card).for_each(|i| {

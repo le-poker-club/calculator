@@ -13,6 +13,7 @@ impl CalculateOutsReq {
         return CalculateRatingReq {
             clients: self.clients.clone(),
             deal_cards: self.deal_cards.clone(),
+            dead_cards: self.dead_cards.clone(),
         };
     }
 }
@@ -21,6 +22,8 @@ impl CalculateOutsReq {
 pub struct CalculateOutsReq {
     pub clients: Vec<UserCards>,
     pub deal_cards: Vec<String>, // 公共牌
+    #[serde(default)]
+    pub dead_cards: Vec<String>, // 已发过的不计算的牌
 }
 #[derive(Deserialize, Serialize)]
 pub struct CalculateOutsRsp {
@@ -39,6 +42,8 @@ pub struct CalculateRatingReq {
     pub clients: Vec<UserCards>,
     #[serde(default)]
     pub deal_cards: Vec<String>, // 公共牌
+    #[serde(default)]
+    pub dead_cards: Vec<String>, // 已发过的不计算的牌
 }
 #[derive(Deserialize, Serialize)]
 pub struct CalculateRatingRsp {
