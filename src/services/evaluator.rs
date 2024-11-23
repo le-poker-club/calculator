@@ -296,7 +296,7 @@ impl CalculateRating for Evaluator {
             let win_count_value = win_count_by_uid.get(uid).unwrap_or_else(|| &zero_u64);
             calculate_rating_rsp.clients_rate.push(ClientRate {
                 uid: uid_copy,
-                rate: (win_count_value + draw_count_value) * 10000 / total_num,
+                rate: (win_count_value * 10000 + draw_count_value * 5000) / total_num,
             })
         }
         return calculate_rating_rsp;
