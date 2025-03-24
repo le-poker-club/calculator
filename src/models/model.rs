@@ -35,6 +35,7 @@ pub struct CalculateOutsRsp {
 pub struct Outs {
     pub cards: Vec<String>,
     pub uid: String,
+    pub draw_index: usize,
 }
 
 #[derive(Deserialize, Serialize)]

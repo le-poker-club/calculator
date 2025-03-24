@@ -109,9 +109,11 @@ impl CalculateRating for Evaluator {
         }
         let mut outs_by_uid = HashMap::new();
         let mut draw_outs_by_uid = HashMap::new();
+        let mut draw_index_by_uid: HashMap<&String, usize> = HashMap::new();
         for card_info in &user_cards {
             outs_by_uid.insert(card_info.uid, vec![]);
             draw_outs_by_uid.insert(card_info.uid, vec![]);
+            draw_index_by_uid.insert(card_info.uid, 0);
         }
         if req.deal_cards.len() < 5 {
             let (board, alive_cards) =
@@ -146,6 +148,9 @@ impl CalculateRating for Evaluator {
                 }
                 i += 1;
             }
+            for (uid,win_outs) in outs_by_uid.iter(){
+                draw_index_by_uid.insert(*uid, win_outs.len());
+            }
             draw_outs_by_uid.into_iter().for_each(|(uid, draw_outs)| {
                 outs_by_uid.get_mut(uid).unwrap().extend(draw_outs);
             });
@@ -160,6 +165,7 @@ impl CalculateRating for Evaluator {
             let out = Outs {
                 cards: outs_string,
                 uid: uid.to_string(),
+                draw_index:*draw_index_by_uid.get(uid).unwrap(),
             };
             return_outs.push(out);
         }
