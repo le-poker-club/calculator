@@ -10,6 +10,7 @@ mod tests {
         let mut req = CalculateRatingReq {
             clients: vec![],
             deal_cards: vec![],
+            dead_cards: vec![],
         };
         req.clients.push(UserCards {
             hands: ["As".to_string(), "Ks".to_string()],

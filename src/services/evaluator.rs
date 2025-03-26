@@ -53,6 +53,7 @@ impl Evaluator {
     fn get_board_and_alive_cards(
         &self,
         deal_cards: &Vec<String>,
+        dead_cards: &Vec<String>,
         user_cards: &Vec<CardsInfo>,
     ) -> (Hand, Vec<usize>) {
         let board = if let Some(board) = deal_cards
@@ -76,7 +77,16 @@ impl Evaluator {
         } else {
             0
         };
-        mask = mask | board.get_mask();
+        let dead_cards_hands = if let Some(dead_card) = dead_cards
+            .iter()
+            .map(|x| x.parse::<Hand>().unwrap())
+            .reduce(|acc, e| acc + e)
+        {
+            dead_card
+        } else {
+            Hand::new()
+        };
+        mask = mask | board.get_mask() | dead_cards_hands.get_mask();
         // // 计算剩余的cards
         let alive_cards = compute_alive_cards(mask);
         (board, alive_cards)
@@ -99,12 +109,15 @@ impl CalculateRating for Evaluator {
         }
         let mut outs_by_uid = HashMap::new();
         let mut draw_outs_by_uid = HashMap::new();
+        let mut draw_index_by_uid: HashMap<&String, usize> = HashMap::new();
         for card_info in &user_cards {
             outs_by_uid.insert(card_info.uid, vec![]);
             draw_outs_by_uid.insert(card_info.uid, vec![]);
+            draw_index_by_uid.insert(card_info.uid, 0);
         }
         if req.deal_cards.len() < 5 {
-            let (board, alive_cards) = self.get_board_and_alive_cards(&req.deal_cards, &user_cards);
+            let (board, alive_cards) =
+                self.get_board_and_alive_cards(&req.deal_cards, &req.dead_cards, &user_cards);
             let mut i = 0;
             while i < alive_cards.len() {
                 let mut new_board = Hand::new();
@@ -135,6 +148,9 @@ impl CalculateRating for Evaluator {
                 }
                 i += 1;
             }
+            for (uid,win_outs) in outs_by_uid.iter(){
+                draw_index_by_uid.insert(*uid, win_outs.len());
+            }
             draw_outs_by_uid.into_iter().for_each(|(uid, draw_outs)| {
                 outs_by_uid.get_mut(uid).unwrap().extend(draw_outs);
             });
@@ -149,6 +165,7 @@ impl CalculateRating for Evaluator {
             let out = Outs {
                 cards: outs_string,
                 uid: uid.to_string(),
+                draw_index:*draw_index_by_uid.get(uid).unwrap(),
             };
             return_outs.push(out);
         }
@@ -168,7 +185,8 @@ impl CalculateRating for Evaluator {
                     .to_string(),
             };
         }
-        let (board, alive_cards) = self.get_board_and_alive_cards(&req.deal_cards, &user_cards);
+        let (board, alive_cards) =
+            self.get_board_and_alive_cards(&req.deal_cards, &req.dead_cards, &user_cards);
         let remain_card = 5 - board.len();
         let mut alive_card_index: Vec<i32> = Vec::new();
         (0..remain_card).for_each(|i| {
@@ -284,7 +302,7 @@ impl CalculateRating for Evaluator {
             let win_count_value = win_count_by_uid.get(uid).unwrap_or_else(|| &zero_u64);
             calculate_rating_rsp.clients_rate.push(ClientRate {
                 uid: uid_copy,
-                rate: (win_count_value + draw_count_value) * 10000 / total_num,
+                rate: (win_count_value * 10000 + draw_count_value * 5000) / total_num,
             })
         }
         return calculate_rating_rsp;
